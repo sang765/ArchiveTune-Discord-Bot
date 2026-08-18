@@ -1,0 +1,60 @@
+# Copy this file to config.yaml and replace placeholder IDs.
+# Discord snowflakes are strings in YAML to avoid integer precision issues.
+bot_token: "replace-with-discord-bot-token"
+guild_id: "replace-with-server-id"
+
+# Optional: slash commands are restricted to these role IDs.
+# Leave empty to allow members with Manage Threads or Administrator.
+moderator_role_ids: []
+
+# Set true to remove any tag not declared in this file from managed channels.
+replace_existing_tags: false
+
+channels:
+  - id: "replace-with-issues-forum-channel-id"
+    name: "issues"
+    require_tag: true
+    post_guidelines: |
+      ## Tags system
+      Be sure to set tags on your request!
+
+      ### In the future, this page will be updated and corrected; always check the template.
+    tags:
+      - name: "Problem"
+        emoji: "❗"
+      - name: "Question"
+        emoji: "❓"
+      - name: "Stable Version"
+        emoji: "🧊"
+      - name: "Nightly Version"
+        emoji: "🌙"
+      - name: "False report"
+        emoji: "⚠️"
+      - name: "Solved"
+        emoji: "✅"
+      - name: "meta"
+
+  - id: "replace-with-suggestion-forum-channel-id"
+    name: "suggestion"
+    require_tag: false
+    post_guidelines: |
+      Please choose the most accurate status tag for your suggestion.
+    tags:
+      - name: "Accept"
+        emoji: "✅"
+      - name: "Reject"
+        emoji: "❌"
+      - name: "Done"
+        emoji: "🏁"
+      - name: "In Progress..."
+        emoji: "🛠️"
+      - name: "Maybe"
+        emoji: "🤔"
+      - name: "Duplicate"
+        emoji: "♻️"
+      - name: "Already exist"
+        emoji: "📌"
+      - name: "TBA"
+        emoji: "✨"
+      - name: "TBD"
+        emoji: "❔"

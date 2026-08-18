@@ -1,0 +1,193 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
+	"github.com/bwmarrin/discordgo"
+	"github.com/sang765/discord-forum-bot/internal/config"
+	forumdiscord "github.com/sang765/discord-forum-bot/internal/discord"
+)
+
+var commands = []*discordgo.ApplicationCommand{
+	{
+		Name:        "forum-sync",
+		Description: "Đồng bộ guideline, tag và trạng thái bắt buộc tag cho Forum Channel",
+		Options: []*discordgo.ApplicationCommandOption{
+			{Name: "channel", Description: "Forum Channel cần đồng bộ", Type: discordgo.ApplicationCommandOptionChannel, Required: true},
+		},
+	},
+	{
+		Name:        "tag-add",
+		Description: "Thêm một tag vào post hiện tại hoặc post được chỉ định",
+		Options: []*discordgo.ApplicationCommandOption{
+			{Name: "tag", Description: "Tên tag đã cấu hình", Type: discordgo.ApplicationCommandOptionString, Required: true},
+			{Name: "post_id", Description: "ID post; bỏ trống để dùng post hiện tại", Type: discordgo.ApplicationCommandOptionString, Required: false},
+		},
+	},
+	{
+		Name:        "tag-remove",
+		Description: "Gỡ một tag khỏi post hiện tại hoặc post được chỉ định",
+		Options: []*discordgo.ApplicationCommandOption{
+			{Name: "tag", Description: "Tên tag đã cấu hình", Type: discordgo.ApplicationCommandOptionString, Required: true},
+			{Name: "post_id", Description: "ID post; bỏ trống để dùng post hiện tại", Type: discordgo.ApplicationCommandOptionString, Required: false},
+		},
+	},
+	{
+		Name:        "post-rename",
+		Description: "Đổi tên một post trong Forum Channel được quản lý",
+		Options: []*discordgo.ApplicationCommandOption{
+			{Name: "name", Description: "Tên mới của post", Type: discordgo.ApplicationCommandOptionString, Required: true},
+			{Name: "post_id", Description: "ID post; bỏ trống để dùng post hiện tại", Type: discordgo.ApplicationCommandOptionString, Required: false},
+		},
+	},
+	{
+		Name:        "post-state",
+		Description: "Đóng/mở hoặc khóa/mở khóa post",
+		Options: []*discordgo.ApplicationCommandOption{
+			{Name: "state", Description: "Trạng thái muốn đặt", Type: discordgo.ApplicationCommandOptionString, Required: true, Choices: []*discordgo.ApplicationCommandOptionChoice{
+				{Name: "open", Value: "open"},
+				{Name: "close", Value: "close"},
+				{Name: "lock", Value: "lock"},
+				{Name: "unlock", Value: "unlock"},
+			}},
+			{Name: "post_id", Description: "ID post; bỏ trống để dùng post hiện tại", Type: discordgo.ApplicationCommandOptionString, Required: false},
+		},
+	},
+}
+
+func main() {
+	configPath := os.Getenv("CONFIG_FILE")
+	if configPath == "" {
+		configPath = "config.yaml"
+	}
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("configuration error: %v", err)
+	}
+
+	session, err := discordgo.New("Bot " + cfg.BotToken)
+	if err != nil {
+		log.Fatalf("create Discord session: %v", err)
+	}
+	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMessageReactions
+	manager := forumdiscord.NewManager(session, cfg)
+
+	session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
+		log.Printf("logged in as %s#%s", ready.User.Username, ready.User.Discriminator)
+		if _, err := s.ApplicationCommandBulkOverwrite(ready.User.ID, cfg.GuildID, commands); err != nil {
+			log.Printf("register slash commands: %v", err)
+			return
+		}
+		if err := manager.SyncConfiguredChannels(); err != nil {
+			log.Printf("initial forum sync: %v", err)
+			return
+		}
+		log.Printf("synced %d managed Forum Channel(s)", len(cfg.Channels))
+	})
+	session.AddHandler(func(s *discordgo.Session, interaction *discordgo.InteractionCreate) {
+		if interaction.Type != discordgo.InteractionApplicationCommand {
+			return
+		}
+		if !forumdiscord.HasModeratorAccess(interaction, cfg) {
+			respond(s, interaction, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng lệnh này.", true)
+			return
+		}
+		handleCommand(s, interaction, manager, cfg)
+	})
+
+	if err := session.Open(); err != nil {
+		log.Fatalf("open Discord gateway: %v", err)
+	}
+	defer session.Close()
+	log.Println("bot is running; press Ctrl+C to stop")
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	log.Println("shutting down")
+}
+
+func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager *forumdiscord.Manager, cfg *config.Config) {
+	data := i.ApplicationCommandData()
+	switch data.Name {
+	case "forum-sync":
+		channelID := optionString(data.Options, "channel")
+		channel, err := manager.SyncChannel(channelID)
+		if err != nil {
+			respond(s, i, err.Error(), true)
+			return
+		}
+		respond(s, i, fmt.Sprintf("Đã đồng bộ Forum Channel %s với %d tag.", channel.Mention(), len(channel.AvailableTags)), false)
+	case "tag-add":
+		postID := postIDFrom(i, data.Options)
+		updated, err := manager.ApplyTag(postID, optionString(data.Options, "tag"))
+		if err != nil {
+			respond(s, i, err.Error(), true)
+			return
+		}
+		respond(s, i, fmt.Sprintf("Đã thêm tag vào post %s.", updated.Mention()), false)
+	case "tag-remove":
+		postID := postIDFrom(i, data.Options)
+		updated, err := manager.RemoveTag(postID, optionString(data.Options, "tag"))
+		if err != nil {
+			respond(s, i, err.Error(), true)
+			return
+		}
+		respond(s, i, fmt.Sprintf("Đã gỡ tag khỏi post %s.", updated.Mention()), false)
+	case "post-rename":
+		postID := postIDFrom(i, data.Options)
+		updated, err := manager.RenameThread(postID, optionString(data.Options, "name"))
+		if err != nil {
+			respond(s, i, err.Error(), true)
+			return
+		}
+		respond(s, i, fmt.Sprintf("Đã đổi tên post thành **%s**.", updated.Name), false)
+	case "post-state":
+		postID := postIDFrom(i, data.Options)
+		state := optionString(data.Options, "state")
+		if state != "open" && state != "close" && state != "lock" && state != "unlock" {
+			respond(s, i, "Trạng thái không hợp lệ.", true)
+			return
+		}
+		updated, err := manager.SetThreadState(postID, state)
+		if err != nil {
+			respond(s, i, err.Error(), true)
+			return
+		}
+		respond(s, i, fmt.Sprintf("Đã đặt trạng thái `%s` cho post %s.", state, updated.Mention()), false)
+	}
+}
+
+func optionString(options []*discordgo.ApplicationCommandInteractionDataOption, name string) string {
+	for _, option := range options {
+		if option.Name == name {
+			return strings.TrimSpace(option.StringValue())
+		}
+	}
+	return ""
+}
+
+func postIDFrom(i *discordgo.InteractionCreate, options []*discordgo.ApplicationCommandInteractionDataOption) string {
+	if postID := optionString(options, "post_id"); postID != "" {
+		return postID
+	}
+	return i.ChannelID
+}
+
+func respond(s *discordgo.Session, i *discordgo.InteractionCreate, content string, ephemeral bool) {
+	var flags discordgo.MessageFlags
+	if ephemeral {
+		flags = discordgo.MessageFlagsEphemeral
+	}
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseChannelMessageWithSource,
+		Data: &discordgo.InteractionResponseData{Content: content, Flags: flags},
+	}); err != nil {
+		log.Printf("interaction response: %v", err)
+	}
+}
