@@ -74,7 +74,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("create Discord session: %v", err)
 	}
-	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMessageReactions
+	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMessageReactions | discordgo.IntentMessageContent
 	manager := forumdiscord.NewManager(session, cfg)
 
 	session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
@@ -98,6 +98,25 @@ func main() {
 			return
 		}
 		handleCommand(s, interaction, manager, cfg)
+	})
+	session.AddHandler(func(s *discordgo.Session, message *discordgo.MessageCreate) {
+		if message.Author == nil || message.Author.Bot || message.GuildID != cfg.GuildID {
+			return
+		}
+		action, ok := forumdiscord.ParsePrefixCommand(message.Content)
+		if !ok {
+			return
+		}
+		if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
+			_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng prefix command.")
+			return
+		}
+		updated, err := manager.ApplyPrefixAction(message.ChannelID, action)
+		if err != nil {
+			_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý "+action.Command+": "+err.Error())
+			return
+		}
+		_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Đã áp dụng `%s`: tag `%s`, khóa post và đổi tên thành **%s**.", action.Command, action.TagName, updated.Name))
 	})
 
 	if err := session.Open(); err != nil {

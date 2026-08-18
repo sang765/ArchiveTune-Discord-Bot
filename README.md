@@ -25,6 +25,10 @@ Bot cố ý **không** xử lý nội dung AI, không lưu lịch sử, không q
 | `/tag-remove tag:<tên>` | Chạy trong post; hoặc thêm `post_id` | Gỡ tag khỏi post. |
 | `/post-rename name:<tên mới>` | Chạy trong post; hoặc thêm `post_id` | Đổi tên post. |
 | `/post-state state:<open\|close\|lock\|unlock>` | Chạy trong post; hoặc thêm `post_id` | Thay đổi trạng thái archive hoặc lock của post. |
+| `.solved` hoặc `.sloved` | Gửi trực tiếp trong post | Gắn tag `Solved`, khóa post và đổi tên thành `[SOLVED] ...`. `.sloved` được giữ làm alias cho lỗi chính tả phổ biến. |
+| `.accept`, `.reject`, `.done`, `.in-progress`, `.maybe` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
+| `.duplicate`, `.already-exist`, `.tba`, `.tbd` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
+| `.problem`, `.question`, `.stable`, `.nightly`, `.false-report`, `.meta` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
 
 Nếu lệnh tag được chạy trước khi bot đồng bộ channel, bot sẽ báo rằng tag chưa có Discord ID và yêu cầu chạy `/forum-sync` trước. Điều này tránh việc áp dụng một ID không tồn tại.
 
@@ -74,7 +78,9 @@ Có thể đổi vị trí cấu hình bằng biến môi trường:
 CONFIG_FILE=/path/to/config.yaml ./bin/discord-forum-bot
 ```
 
-Sau khi bot online, handler `Ready` sẽ đăng ký lại bộ slash command theo guild và đồng bộ toàn bộ channel trong cấu hình một lần. Khi sửa tag hoặc guidelines, chạy lại bot hoặc dùng `/forum-sync` cho từng channel.
+Sau khi bot online, handler `Ready` sẽ đăng ký lại bộ slash command theo guild, đồng bộ toàn bộ channel trong cấu hình một lần và lắng nghe prefix command trong message. Khi sửa tag hoặc guidelines, chạy lại bot hoặc dùng `/forum-sync` cho từng channel.
+
+Để prefix command hoạt động, cần bật **Message Content Intent** cho Bot User trong Discord Developer Portal. Nếu không bật intent này, slash command vẫn hoạt động nhưng bot sẽ không đọc được nội dung bắt đầu bằng dấu chấm.
 
 ## Chạy bằng Docker
 
