@@ -133,9 +133,12 @@ func HasModeratorMessageAccess(message *discordgo.MessageCreate, cfg *config.Con
 }
 
 func (m *Manager) ApplyPrefixAction(threadID string, action PrefixAction) (*discordgo.Channel, error) {
-	thread, _, err := m.ManagedThread(threadID)
+	thread, cfg, err := m.ManagedThread(threadID)
 	if err != nil {
 		return nil, err
+	}
+	if !PrefixActionAllowedForChannel(action, cfg.ID) {
+		return nil, fmt.Errorf("%s chỉ được phép dùng trong Forum Channel issues", action.Command)
 	}
 	if _, err := m.ApplyTag(threadID, action.TagName); err != nil {
 		return nil, fmt.Errorf("apply prefix tag %q: %w", action.TagName, err)

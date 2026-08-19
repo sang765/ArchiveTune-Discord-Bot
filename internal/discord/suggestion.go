@@ -7,8 +7,6 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-const SuggestionChannelID = "1498328044635422790"
-
 func (m *Manager) MaybeTagIfMissing(threadID string) (bool, error) {
 	thread, cfg, err := m.ManagedThread(threadID)
 	if err != nil {

@@ -25,12 +25,12 @@ Bot cố ý **không** xử lý nội dung AI, không lưu lịch sử, không q
 | `/tag-remove tag:<tên>` | Chạy trong post; hoặc thêm `post_id` | Gỡ tag khỏi post. |
 | `/post-rename name:<tên mới>` | Chạy trong post; hoặc thêm `post_id` | Đổi tên post. |
 | `/post-state state:<open\|close\|lock\|unlock>` | Chạy trong post; hoặc thêm `post_id` | Thay đổi trạng thái archive hoặc lock của post. |
-| `.solved` | Gửi trực tiếp trong post | Gắn tag `Solved`, khóa post và đổi tên thành `[SOLVED] ...`. |
+| `.solved` | Gửi trực tiếp trong post trong `issues` | Gắn tag `Solved`, khóa post và đổi tên thành `[SOLVED] ...`. Chỉ hoạt động trong issues channel `1498327801923637439`. |
 | `.dupe <post link hoặc message link>` | Gửi trong bất kỳ channel nào có thể dùng command | Chỉ xử lý post thuộc `suggestion`: xóa tag cũ, gắn `Duplicate`, đóng, khóa và đổi tên thành `[DUPLICATE] ...`. |
 | `/fix-suggestion` | Slash command dành cho moderator | Quét active và archived post trong suggestion channel `1498328044635422790`, sau đó gắn `Maybe` cho post chưa có tag. |
 | `.accept`, `.reject`, `.done`, `.in-progress`, `.maybe` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
 | `.duplicate`, `.already-exist`, `.tba`, `.tbd` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
-| `.problem`, `.question`, `.stable`, `.nightly`, `.false`, `.false-report`, `.meta` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. `.false` gắn tag `False report` và đổi tên thành `[FALSE REPORT] ...`. |
+| `.problem`, `.question`, `.stable`, `.nightly`, `.false`, `.false-report`, `.meta` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. `.false` gắn tag `False report` và đổi tên thành `[FALSE REPORT] ...`; `.false` và `.false-report` chỉ chạy trong issues channel `1498327801923637439`. |
 
 Nếu lệnh tag được chạy trước khi bot đồng bộ channel, bot sẽ báo rằng tag chưa có Discord ID và yêu cầu chạy `/forum-sync` trước. Điều này tránh việc áp dụng một ID không tồn tại.
 
@@ -88,7 +88,7 @@ Có thể bật `prefix_autocorrect: true` để bot tự sửa một typo gần
 
 Lệnh `.dupe` chấp nhận cả post link dạng `https://discord.com/channels/<guild_id>/<post_id>` và message link dạng `https://discord.com/channels/<guild_id>/<post_id>/<message_id>`. Bot kiểm tra guild ID, xác định post từ channel ID trong link và từ chối nếu post không thuộc Forum Channel `suggestion`.
 
-Forum Channel `suggestion` có ID `1498328044635422790`. Với mọi post mới chưa có tag, bot sẽ tự động gắn `Maybe` ngay khi nhận được event tạo thread. `/fix-suggestion` dùng để sửa các post cũ chưa có tag, bao gồm cả post active và archived mà bot có quyền truy cập.
+Forum Channel `issues` có ID `1498327801923637439`; các lệnh `.solved` và `.false` được giới hạn vào channel này. Forum Channel `suggestion` có ID `1498328044635422790`. Với mọi post mới chưa có tag, bot sẽ tự động gắn `Maybe` ngay khi nhận được event tạo thread. `/fix-suggestion` dùng để sửa các post cũ chưa có tag, bao gồm cả post active và archived mà bot có quyền truy cập.
 
 ## Chạy bằng Docker
 

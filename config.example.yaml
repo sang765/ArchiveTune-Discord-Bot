@@ -16,7 +16,7 @@ prefix_autocorrect: true
 prefix_max_distance: 2
 
 channels:
-  - id: "replace-with-issues-forum-channel-id"
+  - id: "1498327801923637439"
     name: "issues"
     require_tag: true
     post_guidelines: |
