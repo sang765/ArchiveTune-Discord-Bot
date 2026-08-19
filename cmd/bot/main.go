@@ -104,6 +104,15 @@ func main() {
 			return
 		}
 		action, ok := forumdiscord.ParsePrefixCommand(message.Content)
+		originalCommand := ""
+		if !ok && cfg.PrefixAutocorrect {
+			var correctedCommand string
+			action, correctedCommand, ok = forumdiscord.GuessPrefixCommand(message.Content, cfg.PrefixMaxDistance)
+			if ok {
+				originalCommand = strings.TrimSpace(message.Content)
+				log.Printf("autocorrected prefix %q to %q", originalCommand, correctedCommand)
+			}
+		}
 		if !ok {
 			return
 		}
@@ -116,7 +125,11 @@ func main() {
 			_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý "+action.Command+": "+err.Error())
 			return
 		}
-		_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Đã áp dụng `%s`: tag `%s`, khóa post và đổi tên thành **%s**.", action.Command, action.TagName, updated.Name))
+		messageText := fmt.Sprintf("Đã áp dụng `%s`: tag `%s`, khóa post và đổi tên thành **%s**.", action.Command, action.TagName, updated.Name)
+		if originalCommand != "" {
+			messageText = fmt.Sprintf("Mình đã tự sửa `%s` thành `%s`. %s", originalCommand, action.Command, messageText)
+		}
+		_, _ = s.ChannelMessageSend(message.ChannelID, messageText)
 	})
 
 	if err := session.Open(); err != nil {

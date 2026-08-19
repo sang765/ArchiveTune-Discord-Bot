@@ -17,7 +17,6 @@ type PrefixAction struct {
 
 var prefixActions = map[string]PrefixAction{
 	".solved":        {Command: ".solved", TagName: "Solved", TitlePrefix: "[SOLVED]"},
-	".sloved":        {Command: ".sloved", TagName: "Solved", TitlePrefix: "[SOLVED]"}, // common typo kept as alias
 	".accept":        {Command: ".accept", TagName: "Accept", TitlePrefix: "[ACCEPTED]"},
 	".accepted":      {Command: ".accepted", TagName: "Accept", TitlePrefix: "[ACCEPTED]"},
 	".reject":        {Command: ".reject", TagName: "Reject", TitlePrefix: "[REJECTED]"},
@@ -46,6 +45,70 @@ func ParsePrefixCommand(content string) (PrefixAction, bool) {
 	}
 	action, ok := prefixActions[strings.ToLower(fields[0])]
 	return action, ok
+}
+
+// GuessPrefixCommand returns a command only when there is one unambiguous close match.
+// It intentionally does not add typo spellings to prefixActions, so a typo is never
+// treated as a real command when autocorrection is disabled.
+func GuessPrefixCommand(content string, maxDistance int) (PrefixAction, string, bool) {
+	fields := strings.Fields(strings.TrimSpace(content))
+	if len(fields) != 1 || maxDistance <= 0 {
+		return PrefixAction{}, "", false
+	}
+	candidate := strings.ToLower(fields[0])
+	bestDistance := maxDistance + 1
+	var bestAction PrefixAction
+	var bestCommand string
+	tie := false
+	for command, action := range prefixActions {
+		distance := levenshtein(candidate, command)
+		if distance > maxDistance {
+			continue
+		}
+		if distance < bestDistance {
+			bestDistance = distance
+			bestAction = action
+			bestCommand = command
+			tie = false
+		} else if distance == bestDistance {
+			tie = true
+		}
+	}
+	if bestCommand == "" || tie {
+		return PrefixAction{}, "", false
+	}
+	return bestAction, bestCommand, true
+}
+
+func levenshtein(a, b string) int {
+	left, right := []rune(a), []rune(b)
+	previous := make([]int, len(right)+1)
+	for j := range previous {
+		previous[j] = j
+	}
+	for i, leftRune := range left {
+		current := make([]int, len(right)+1)
+		current[0] = i + 1
+		for j, rightRune := range right {
+			cost := 0
+			if leftRune != rightRune {
+				cost = 1
+			}
+			current[j+1] = minInt(current[j]+1, previous[j+1]+1, previous[j]+cost)
+		}
+		previous = current
+	}
+	return previous[len(right)]
+}
+
+func minInt(values ...int) int {
+	minimum := values[0]
+	for _, value := range values[1:] {
+		if value < minimum {
+			minimum = value
+		}
+	}
+	return minimum
 }
 
 func HasModeratorMessageAccess(message *discordgo.MessageCreate, cfg *config.Config) bool {

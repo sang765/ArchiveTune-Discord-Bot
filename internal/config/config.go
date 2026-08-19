@@ -14,6 +14,8 @@ type Config struct {
 	GuildID             string          `yaml:"guild_id"`
 	ModeratorRoleIDs    []string        `yaml:"moderator_role_ids"`
 	ReplaceExistingTags bool            `yaml:"replace_existing_tags"`
+	PrefixAutocorrect   bool            `yaml:"prefix_autocorrect"`
+	PrefixMaxDistance   int             `yaml:"prefix_max_distance"`
 	Channels            []ChannelConfig `yaml:"channels"`
 }
 
@@ -40,6 +42,9 @@ func Load(path string) (*Config, error) {
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+	if cfg.PrefixMaxDistance == 0 {
+		cfg.PrefixMaxDistance = 2
+	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
@@ -52,6 +57,9 @@ func (c *Config) Validate() error {
 	}
 	if strings.TrimSpace(c.GuildID) == "" || strings.Contains(c.GuildID, "replace-with") {
 		return errors.New("guild_id is missing")
+	}
+	if c.PrefixMaxDistance < 0 || c.PrefixMaxDistance > 3 {
+		return errors.New("prefix_max_distance must be between 0 and 3")
 	}
 	if len(c.Channels) == 0 {
 		return errors.New("at least one managed channel is required")

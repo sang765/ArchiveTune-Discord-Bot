@@ -2,20 +2,31 @@ package discord
 
 import "testing"
 
-func TestParsePrefixCommandSolvedAndAlias(t *testing.T) {
-	for _, command := range []string{".solved", ".sloved"} {
-		action, ok := ParsePrefixCommand(command)
-		if !ok {
-			t.Fatalf("expected %s to be recognized", command)
-		}
-		if action.TagName != "Solved" || action.TitlePrefix != "[SOLVED]" {
-			t.Fatalf("unexpected action for %s: %#v", command, action)
-		}
+func TestParsePrefixCommandSolvedOnly(t *testing.T) {
+	action, ok := ParsePrefixCommand(".solved")
+	if !ok {
+		t.Fatal("expected .solved to be recognized")
+	}
+	if action.TagName != "Solved" || action.TitlePrefix != "[SOLVED]" {
+		t.Fatalf("unexpected action: %#v", action)
+	}
+	if _, ok := ParsePrefixCommand(".sloved"); ok {
+		t.Fatal("expected .sloved to be removed as a valid command")
 	}
 }
 
-func TestParsePrefixCommandRejectsArguments(t *testing.T) {
-	if _, ok := ParsePrefixCommand(".solved extra"); ok {
+func TestGuessPrefixCommandCorrectsSloved(t *testing.T) {
+	action, command, ok := GuessPrefixCommand(".sloved", 2)
+	if !ok {
+		t.Fatal("expected .sloved to be recognized as an unambiguous typo")
+	}
+	if command != ".solved" || action.TagName != "Solved" {
+		t.Fatalf("unexpected correction: command=%q action=%#v", command, action)
+	}
+}
+
+func TestGuessPrefixCommandRejectsArguments(t *testing.T) {
+	if _, _, ok := GuessPrefixCommand(".solved extra", 2); ok {
 		t.Fatal("expected command with arguments to be rejected")
 	}
 }

@@ -10,6 +10,11 @@ moderator_role_ids: []
 # Set true to remove any tag not declared in this file from managed channels.
 replace_existing_tags: false
 
+# If true, a close typo such as .solvd can be auto-corrected to .solved.
+prefix_autocorrect: true
+# Maximum Levenshtein distance for automatic correction. Recommended: 1-2.
+prefix_max_distance: 2
+
 channels:
   - id: "replace-with-issues-forum-channel-id"
     name: "issues"
