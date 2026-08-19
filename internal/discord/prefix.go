@@ -32,6 +32,7 @@ var prefixActions = map[string]PrefixAction{
 	".question":      {Command: ".question", TagName: "Question", TitlePrefix: "[QUESTION]"},
 	".stable":        {Command: ".stable", TagName: "Stable Version", TitlePrefix: "[STABLE]"},
 	".nightly":       {Command: ".nightly", TagName: "Nightly Version", TitlePrefix: "[NIGHTLY]"},
+	".false":         {Command: ".false", TagName: "False report", TitlePrefix: "[FALSE REPORT]"},
 	".false-report":  {Command: ".false-report", TagName: "False report", TitlePrefix: "[FALSE REPORT]"},
 	".meta":          {Command: ".meta", TagName: "meta", TitlePrefix: "[META]"},
 }

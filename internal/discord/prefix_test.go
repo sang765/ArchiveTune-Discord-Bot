@@ -15,6 +15,16 @@ func TestParsePrefixCommandSolvedOnly(t *testing.T) {
 	}
 }
 
+func TestParsePrefixCommandFalseReport(t *testing.T) {
+	action, ok := ParsePrefixCommand(".false")
+	if !ok {
+		t.Fatal("expected .false to be recognized")
+	}
+	if action.TagName != "False report" || action.TitlePrefix != "[FALSE REPORT]" {
+		t.Fatalf("unexpected action: %#v", action)
+	}
+}
+
 func TestGuessPrefixCommandCorrectsSloved(t *testing.T) {
 	action, command, ok := GuessPrefixCommand(".sloved", 2)
 	if !ok {

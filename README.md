@@ -28,7 +28,7 @@ Bot cố ý **không** xử lý nội dung AI, không lưu lịch sử, không q
 | `.solved` | Gửi trực tiếp trong post | Gắn tag `Solved`, khóa post và đổi tên thành `[SOLVED] ...`. |
 | `.accept`, `.reject`, `.done`, `.in-progress`, `.maybe` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
 | `.duplicate`, `.already-exist`, `.tba`, `.tbd` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
-| `.problem`, `.question`, `.stable`, `.nightly`, `.false-report`, `.meta` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
+| `.problem`, `.question`, `.stable`, `.nightly`, `.false`, `.false-report`, `.meta` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. `.false` gắn tag `False report` và đổi tên thành `[FALSE REPORT] ...`. |
 
 Nếu lệnh tag được chạy trước khi bot đồng bộ channel, bot sẽ báo rằng tag chưa có Discord ID và yêu cầu chạy `/forum-sync` trước. Điều này tránh việc áp dụng một ID không tồn tại.
 
