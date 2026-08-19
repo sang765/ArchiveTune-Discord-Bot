@@ -62,29 +62,5 @@ func isSnowflake(value string) bool {
 }
 
 func (m *Manager) ApplyDuplicateAction(threadID string) (*discordgo.Channel, error) {
-	thread, cfg, err := m.ManagedThread(threadID)
-	if err != nil {
-		return nil, err
-	}
-	if !strings.EqualFold(strings.TrimSpace(cfg.Name), "suggestion") {
-		return nil, fmt.Errorf(".dupe chỉ được phép dùng cho Forum Channel suggestion")
-	}
-
-	duplicateTagID, err := m.tagID(cfg, "Duplicate")
-	if err != nil {
-		return nil, err
-	}
-	baseName := strings.TrimSpace(statusPrefix.ReplaceAllString(thread.Name, ""))
-	if baseName == "" {
-		baseName = thread.Name
-	}
-	newName := strings.TrimSpace("[DUPLICATE] " + baseName)
-	archived, locked := true, true
-	appliedTags := []string{duplicateTagID}
-	return m.editThread(threadID, &discordgo.ChannelEdit{
-		Name:        newName,
-		Archived:    &archived,
-		Locked:      &locked,
-		AppliedTags: &appliedTags,
-	})
+	return m.ApplySuggestionStatusAction(threadID, suggestionStatusActions[".dupe"])
 }

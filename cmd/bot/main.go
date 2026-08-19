@@ -120,13 +120,13 @@ func main() {
 		if message.Author == nil || message.Author.Bot || message.GuildID != cfg.GuildID {
 			return
 		}
-		if link, matched, valid := forumdiscord.ParseDupeCommand(message.Content); matched {
+		if statusAction, link, matched, valid := forumdiscord.ParseSuggestionStatusCommand(message.Content); matched {
 			if !valid {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Cú pháp: `.dupe <Discord post link hoặc message link>`")
+				_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Cú pháp: `%s <Discord post link hoặc message link>`", statusAction.Command))
 				return
 			}
 			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng `.dupe`.")
+				_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng suggestion status command.")
 				return
 			}
 			targetID, err := forumdiscord.ParseDiscordPostLink(link, cfg.GuildID)
@@ -134,12 +134,20 @@ func main() {
 				_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể đọc post link: "+err.Error())
 				return
 			}
-			updated, err := manager.ApplyDuplicateAction(targetID)
+			authorMention, authorErr := manager.ThreadAuthorMention(targetID)
+			if authorErr != nil {
+				log.Printf("get author for %s: %v", targetID, authorErr)
+			}
+			updated, err := manager.ApplySuggestionStatusAction(targetID, statusAction)
 			if err != nil {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý `.dupe`: "+err.Error())
+				_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý "+statusAction.Command+": "+err.Error())
 				return
 			}
-			_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Đã chuyển post %s thành duplicate: thay toàn bộ tag bằng `Duplicate`, đóng, khóa và đổi tên thành **%s**.", updated.Mention(), updated.Name))
+			messageText := fmt.Sprintf("Đã áp dụng `%s`: thay toàn bộ tag bằng `%s`, đóng, khóa và đổi tên thành **%s**.", statusAction.Command, statusAction.TagName, updated.Name)
+			if authorMention != "" {
+				messageText = authorMention + " " + messageText
+			}
+			_, _ = s.ChannelMessageSend(message.ChannelID, messageText)
 			return
 		}
 
@@ -160,12 +168,23 @@ func main() {
 			_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng prefix command.")
 			return
 		}
+		authorMention := ""
+		if action.Command == ".solved" || action.Command == ".false" || action.Command == ".false-report" {
+			var authorErr error
+			authorMention, authorErr = manager.ThreadAuthorMention(message.ChannelID)
+			if authorErr != nil {
+				log.Printf("get author for %s: %v", message.ChannelID, authorErr)
+			}
+		}
 		updated, err := manager.ApplyPrefixAction(message.ChannelID, action)
 		if err != nil {
 			_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý "+action.Command+": "+err.Error())
 			return
 		}
 		messageText := fmt.Sprintf("Đã áp dụng `%s`: tag `%s`, khóa post và đổi tên thành **%s**.", action.Command, action.TagName, updated.Name)
+		if authorMention != "" {
+			messageText = authorMention + " " + messageText
+		}
 		if originalCommand != "" {
 			messageText = fmt.Sprintf("Mình đã tự sửa `%s` thành `%s`. %s", originalCommand, action.Command, messageText)
 		}
