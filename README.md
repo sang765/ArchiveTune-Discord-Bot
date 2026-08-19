@@ -32,7 +32,8 @@ Bot cố ý **không** xử lý nội dung AI, không lưu lịch sử, không q
 | `.exist` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Already exist`, đóng, khóa, đổi tên thành `[ALREADY EXIST] ...` và mention tác giả post. |
 | `/fix-suggestion` | Slash command dành cho moderator | Quét active và archived post trong suggestion channel `1498328044635422790`, sau đó gắn `Maybe` cho post chưa có tag. |
 | `.accept`, `.reject`, `.maybe` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
-| `.duplicate`, `.already-exist`, `.tba`, `.tbd` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
+| `.duplicate`, `.already-exist` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
+| `.tba`, `.tbd` | Gửi trực tiếp trong post suggestion | Xóa toàn bộ tag cũ và chỉ giữ tag `TBA` hoặc `TBD`; không lock, không close và không đổi tên post. |
 | `.problem`, `.question`, `.stable`, `.nightly`, `.false`, `.false-report`, `.meta` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. `.false` gắn tag `False report` và đổi tên thành `[FALSE REPORT] ...`; `.false` và `.false-report` chỉ chạy trong issues channel `1498327801923637439`. |
 
 Nếu lệnh tag được chạy trước khi bot đồng bộ channel, bot sẽ báo rằng tag chưa có Discord ID và yêu cầu chạy `/forum-sync` trước. Điều này tránh việc áp dụng một ID không tồn tại.

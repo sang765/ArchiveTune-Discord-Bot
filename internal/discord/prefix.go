@@ -138,7 +138,15 @@ func (m *Manager) ApplyPrefixAction(threadID string, action PrefixAction) (*disc
 		return nil, err
 	}
 	if !PrefixActionAllowedForChannel(action, cfg.ID) {
-		return nil, fmt.Errorf("%s chỉ được phép dùng trong Forum Channel issues", action.Command)
+		return nil, fmt.Errorf("%s không được phép dùng trong Forum Channel này", action.Command)
+	}
+	if action.Command == ".tba" || action.Command == ".tbd" {
+		tagID, err := m.tagID(cfg, action.TagName)
+		if err != nil {
+			return nil, err
+		}
+		appliedTags := []string{tagID}
+		return m.editThread(threadID, &discordgo.ChannelEdit{AppliedTags: &appliedTags})
 	}
 	if _, err := m.ApplyTag(threadID, action.TagName); err != nil {
 		return nil, fmt.Errorf("apply prefix tag %q: %w", action.TagName, err)

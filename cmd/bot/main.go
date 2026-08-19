@@ -190,6 +190,9 @@ func main() {
 			return
 		}
 		messageText := fmt.Sprintf("Đã áp dụng `%s`: tag `%s`, khóa post và đổi tên thành **%s**.", action.Command, action.TagName, updated.Name)
+		if action.Command == ".tba" || action.Command == ".tbd" {
+			messageText = fmt.Sprintf("Đã áp dụng `%s`: xóa tag cũ và chỉ giữ tag `%s`; post không bị lock, close hoặc đổi tên.", action.Command, action.TagName)
+		}
 		if authorMention != "" {
 			messageText = authorMention + " " + messageText
 		}

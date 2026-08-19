@@ -9,6 +9,8 @@ func PrefixActionAllowedForChannel(action PrefixAction, parentChannelID string) 
 	switch action.Command {
 	case ".solved", ".false", ".false-report":
 		return parentChannelID == IssuesChannelID
+	case ".tba", ".tbd":
+		return parentChannelID == SuggestionChannelID
 	default:
 		return true
 	}
