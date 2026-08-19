@@ -30,8 +30,9 @@ Bot cố ý **không** xử lý nội dung AI, không lưu lịch sử, không q
 | `.done` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Done`, đóng, khóa và đổi tên thành `[DONE] ...`. |
 | `.in-progress` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `In Progress...`, đóng, khóa và đổi tên thành `[IN PROGRESS] ...`. |
 | `.exist` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Already exist`, đóng, khóa, đổi tên thành `[ALREADY EXIST] ...` và mention tác giả post. |
+| `.reject <lý do từ chối>` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Reject`, đóng, khóa, đổi tên thành `[REJECTED] ...`, mention tác giả và gửi kèm lý do. |
 | `/fix-suggestion` | Slash command dành cho moderator | Quét active và archived post trong suggestion channel `1498328044635422790`, sau đó gắn `Maybe` cho post chưa có tag. |
-| `.accept`, `.reject`, `.maybe` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
+| `.accept`, `.maybe` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
 | `.duplicate`, `.already-exist` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
 | `.tba`, `.tbd` | Gửi trực tiếp trong post suggestion | Xóa toàn bộ tag cũ và chỉ giữ tag `TBA` hoặc `TBD`; không lock, không close và không đổi tên post. |
 | `.problem`, `.question`, `.stable`, `.nightly`, `.false`, `.false-report`, `.meta` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. `.false` gắn tag `False report` và đổi tên thành `[FALSE REPORT] ...`; `.false` và `.false-report` chỉ chạy trong issues channel `1498327801923637439`. |
@@ -92,7 +93,7 @@ Có thể bật `prefix_autocorrect: true` để bot tự sửa một typo gần
 
 Lệnh `.dupe` chấp nhận cả post link dạng `https://discord.com/channels/<guild_id>/<post_id>` và message link dạng `https://discord.com/channels/<guild_id>/<post_id>/<message_id>`. Bot kiểm tra guild ID, xác định post từ channel ID trong link và từ chối nếu post không thuộc Forum Channel `suggestion`.
 
-Forum Channel `issues` có ID `1498327801923637439`; các lệnh `.solved` và `.false` được giới hạn vào channel này. Khi `.solved` hoặc `.false` thành công, bot sẽ gửi một message mention tác giả của post. Forum Channel `suggestion` có ID `1498328044635422790`. Với mọi post mới chưa có tag, bot sẽ tự động gắn `Maybe` ngay khi nhận được event tạo thread. `/fix-suggestion` dùng để sửa các post cũ chưa có tag, bao gồm cả post active và archived mà bot có quyền truy cập.
+Forum Channel `issues` có ID `1498327801923637439`; các lệnh `.solved` và `.false` được giới hạn vào channel này. Khi `.solved` hoặc `.false` thành công, bot sẽ gửi một message mention tác giả của post. Forum Channel `suggestion` có ID `1498328044635422790`. Với mọi post mới chưa có tag, bot sẽ tự động gắn `Maybe` ngay khi nhận được event tạo thread. `/fix-suggestion` dùng để sửa các post cũ chưa có tag, bao gồm cả post active và archived mà bot có quyền truy cập. `.reject` yêu cầu lý do dài tối đa 1000 ký tự và chỉ dùng trực tiếp trong suggestion post.
 
 ## Chạy bằng Docker
 

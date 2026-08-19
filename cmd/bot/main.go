@@ -120,6 +120,33 @@ func main() {
 		if message.Author == nil || message.Author.Bot || message.GuildID != cfg.GuildID {
 			return
 		}
+		if reason, matched, valid := forumdiscord.ParseRejectCommand(message.Content); matched {
+			if !valid {
+				_, _ = s.ChannelMessageSend(message.ChannelID, "Cú pháp: `.reject <lý do từ chối>` — lý do là bắt buộc và tối đa 1000 ký tự.")
+				return
+			}
+			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
+				_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator để dùng `.reject`.")
+				return
+			}
+			statusAction := forumdiscord.SuggestionStatusAction{Command: ".reject", TagName: "Reject", TitlePrefix: "[REJECTED]"}
+			authorMention, authorErr := manager.ThreadAuthorMention(message.ChannelID)
+			if authorErr != nil {
+				log.Printf("get author for %s: %v", message.ChannelID, authorErr)
+			}
+			updated, err := manager.ApplySuggestionStatusAction(message.ChannelID, statusAction)
+			if err != nil {
+				_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý `.reject`: "+err.Error())
+				return
+			}
+			messageText := fmt.Sprintf("Đã từ chối suggestion: thay tag bằng `Reject`, đóng, khóa và đổi tên thành **%s**. Lý do: %s", updated.Name, reason)
+			if authorMention != "" {
+				messageText = authorMention + " " + messageText
+			}
+			_, _ = s.ChannelMessageSend(message.ChannelID, messageText)
+			return
+		}
+
 		if statusAction, link, matched, valid := forumdiscord.ParseSuggestionStatusCommand(message.Content); matched {
 			if !valid {
 				if statusAction.Command == ".dupe" {
