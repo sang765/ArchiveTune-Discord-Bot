@@ -1,101 +1,140 @@
 # Discord Forum Tag Manager Bot
 
-Bot Discord viết bằng **Go** với một nhiệm vụ duy nhất: quản lý tag và post trong các **Forum Channel** của server. Project không dùng database; cấu hình nằm trong `config.yaml`, còn Discord là nguồn dữ liệu chính.
+[English](README.md) · [日本語](README.ja.md) · [Tiếng Việt](README.vi.md)
 
-Discord biểu diễn mỗi post trong Forum Channel như một thread, và các tag khả dụng nằm ở `available_tags`; tag đang áp dụng trên post nằm ở `applied_tags`.[1] Vì vậy bot sử dụng Gateway để nhận lệnh và REST API để đồng bộ channel, chỉnh tag, đổi tên, đóng/mở hoặc khóa/mở khóa post.[1] [2]
+A focused Discord bot written in **Go** for managing tags and posts in Discord Forum Channels. The bot has no database and does not process content with AI. Discord remains the source of truth, while `config.yaml` stores channel and bot settings.
 
-## Phạm vi hiện tại
+Discord represents a Forum post as a thread. Available Forum tags are stored on the parent channel, while the tags applied to an individual post are stored on the thread.[1] [2] This bot therefore uses the Gateway for realtime events and the Discord REST API for deterministic post and tag operations.
 
-| Nhóm | Chức năng |
+## Current scope
+
+| Area | Behavior |
 | --- | --- |
-| Đồng bộ channel | Cập nhật Post Guidelines, tạo/cập nhật tag theo cấu hình và bật/tắt `Require Tags when posting`. |
-| Quản lý tag | Thêm hoặc gỡ tag trên post hiện tại hoặc post được chỉ định bằng ID. |
-| Quản lý post | Đổi tên, mở, đóng, khóa và mở khóa post. |
-| Phân quyền | Cho phép người dùng có `Manage Threads`, `Administrator` hoặc role ID được khai báo trong cấu hình. |
-| Triển khai | Có thể chạy bằng binary, Docker hoặc systemd; token chỉ đọc từ file cấu hình không commit. |
+| Forum synchronization | Synchronizes guidelines, configured tags, and the `Require Tags when posting` flag. |
+| Automatic suggestion tagging | Adds `Maybe` to every new untagged post in the configured suggestion channel. |
+| Tag management | Adds, removes, or replaces tags on managed posts. |
+| Post management | Renames, archives, unarchives, locks, and unlocks posts where the command requires it. |
+| Moderation workflows | Provides status commands for issues and suggestions, including author mentions and rejection reasons. |
+| Deployment | Supports a Go binary, Docker, or systemd. Secrets are read from a local configuration file and are not committed. |
 
-Bot cố ý **không** xử lý nội dung AI, không lưu lịch sử, không quản lý reaction và không tự động đổi tag dựa trên nội dung. Đây là ranh giới để project chỉ làm một nhiệm vụ ổn định: quản lý tag và post.
+The bot intentionally does not provide AI moderation, reaction management, history storage, or content-based automatic classification. Its boundary is deterministic Forum tag and post management.
 
-## Các lệnh slash
+## Managed channels
 
-| Lệnh | Cách dùng | Ý nghĩa |
+| Channel | ID | Special behavior |
 | --- | --- | --- |
-| `/forum-sync channel:<Forum Channel>` | Chạy sau khi sửa `config.yaml` | Đồng bộ guideline, tag và cờ bắt buộc tag. |
-| `/tag-add tag:<tên>` | Chạy trong post; hoặc thêm `post_id` | Thêm tag đã khai báo cho Forum Channel. |
-| `/tag-remove tag:<tên>` | Chạy trong post; hoặc thêm `post_id` | Gỡ tag khỏi post. |
-| `/post-rename name:<tên mới>` | Chạy trong post; hoặc thêm `post_id` | Đổi tên post. |
-| `/post-state state:<open\|close\|lock\|unlock>` | Chạy trong post; hoặc thêm `post_id` | Thay đổi trạng thái archive hoặc lock của post. |
-| `.solved` | Gửi trực tiếp trong post trong `issues` | Gắn tag `Solved`, khóa post và đổi tên thành `[SOLVED] ...`. Chỉ hoạt động trong issues channel `1498327801923637439`. |
-| `.dupe <post link hoặc message link>` | Gửi trong bất kỳ channel nào có thể dùng command | Chỉ xử lý post thuộc `suggestion`: xóa tag cũ, gắn `Duplicate`, đóng, khóa và đổi tên thành `[DUPLICATE] ...`, sau đó mention tác giả post. |
-| `.done` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Done`, đóng, khóa và đổi tên thành `[DONE] ...`. |
-| `.in-progress` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `In Progress...`, đóng, khóa và đổi tên thành `[IN PROGRESS] ...`. |
-| `.exist` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Already exist`, đóng, khóa, đổi tên thành `[ALREADY EXIST] ...` và mention tác giả post. |
-| `.reject <lý do từ chối>` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Reject`, đóng, khóa, đổi tên thành `[REJECTED] ...`, mention tác giả và gửi kèm lý do. |
-| `/fix-suggestion` | Slash command dành cho moderator | Quét active và archived post trong suggestion channel `1498328044635422790`, sau đó gắn `Maybe` cho post chưa có tag. |
-| `.accept`, `.maybe` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
-| `.duplicate`, `.already-exist` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
-| `.tba`, `.tbd` | Gửi trực tiếp trong post suggestion | Xóa toàn bộ tag cũ và chỉ giữ tag `TBA` hoặc `TBD`; không lock, không close và không đổi tên post. |
-| `.problem`, `.question`, `.stable`, `.nightly`, `.false`, `.false-report`, `.meta` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. `.false` gắn tag `False report` và đổi tên thành `[FALSE REPORT] ...`; `.false` và `.false-report` chỉ chạy trong issues channel `1498327801923637439`. |
+| `issues` | `1498327801923637439` | `.solved`, `.false`, and `.false-report` are restricted to this Forum Channel. Successful `.solved` and `.false` operations mention the post author. |
+| `suggestion` | `1498328044635422790` | New untagged posts automatically receive `Maybe`. `/fix-suggestion`, `.dupe`, `.done`, `.in-progress`, `.exist`, `.reject`, `.tba`, and `.tbd` operate here. |
 
-Nếu lệnh tag được chạy trước khi bot đồng bộ channel, bot sẽ báo rằng tag chưa có Discord ID và yêu cầu chạy `/forum-sync` trước. Điều này tránh việc áp dụng một ID không tồn tại.
+## Slash commands
 
-## Cấu hình
+| Command | Usage | Behavior |
+| --- | --- | --- |
+| `/forum-sync channel:<Forum Channel>` | Run after changing `config.yaml`. | Synchronizes guidelines, tags, and the required-tag flag. |
+| `/fix-suggestion` | Moderator command. | Scans active and archived accessible suggestion posts and adds `Maybe` to posts with no applied tag. |
+| `/tag-add tag:<name>` | Run in a post, or provide `post_id`. | Adds a configured tag without replacing existing tags. |
+| `/tag-remove tag:<name>` | Run in a post, or provide `post_id`. | Removes a configured tag. |
+| `/post-rename name:<new name>` | Run in a post, or provide `post_id`. | Renames a managed post. |
+| `/post-state state:<open\|close\|lock\|unlock>` | Run in a post, or provide `post_id`. | Changes the archive or lock state of a managed post. |
 
-Sao chép file mẫu rồi điền token, guild ID và channel ID:
+## Prefix commands
+
+Prefix commands are typed as normal messages. They require the **Message Content Intent** and moderator access.
+
+### Issue commands
+
+| Command | Behavior |
+| --- | --- |
+| `.solved` | In `issues`, replaces the current workflow tag with `Solved`, locks the post, and renames it to `[SOLVED] <old name>`. The bot mentions the author. |
+| `.false` | In `issues`, replaces the current workflow tag with `False report`, locks the post, and renames it to `[FALSE REPORT] <old name>`. The bot mentions the author. |
+| `.false-report` | Full-name alias for the `False report` workflow in `issues`. |
+
+### Suggestion commands
+
+| Command | Usage | Behavior |
+| --- | --- | --- |
+| `.dupe <post link or message link>` | Requires a Discord post/message link. | Replaces all existing tags with `Duplicate`, closes and locks the target suggestion post, renames it to `[DUPLICATE] <old name>`, and mentions the target author. |
+| `.done` | Run directly inside the current suggestion post. | Replaces all existing tags with `Done`, closes and locks the post, and renames it to `[DONE] <old name>`. |
+| `.in-progress` | Run directly inside the current suggestion post. | Replaces all existing tags with `In Progress...`, closes and locks the post, and renames it to `[IN PROGRESS] <old name>`. |
+| `.exist` | Run directly inside the current suggestion post. | Replaces all existing tags with `Already exist`, closes and locks the post, renames it to `[ALREADY EXIST] <old name>`, and mentions the author. |
+| `.reject <reason>` | Run directly inside the current suggestion post. | Replaces all existing tags with `Reject`, closes and locks the post, renames it to `[REJECTED] <old name>`, mentions the author, and sends the rejection reason. The reason is required and limited to 1,000 characters. |
+| `.tba` | Run directly inside a suggestion post. | Removes all existing tags and keeps only `TBA`. It does not close, lock, or rename the post. |
+| `.tbd` | Run directly inside a suggestion post. | Removes all existing tags and keeps only `TBD`. It does not close, lock, or rename the post. |
+| `.accept`, `.maybe` | Run directly inside a managed post. | Applies the configured status tag, locks the post, and adds the corresponding status prefix. |
+
+`.done`, `.in-progress`, `.exist`, `.reject`, `.tba`, and `.tbd` do not require a link. `.dupe` accepts either of the following forms:
+
+```text
+https://discord.com/channels/<guild_id>/<post_id>
+https://discord.com/channels/<guild_id>/<post_id>/<message_id>
+```
+
+The bot validates the guild ID and refuses to process a `.dupe` target that is not in the configured `suggestion` Forum Channel.
+
+### Prefix autocorrection
+
+Set `prefix_autocorrect: true` to let the bot correct a close typo when there is exactly one unambiguous command within `prefix_max_distance`. For example, `.sloved` is not a registered alias, but it can be recognized as a typo for `.solved`. The bot reports the correction before applying the command. If multiple commands are equally close, it does nothing to avoid an unsafe guess.
+
+## Configuration
+
+Copy the sample configuration and fill in the bot token and guild ID:
 
 ```bash
 cp config.example.yaml config.yaml
 ```
 
-Trong `config.yaml`, mỗi phần tử `channels` tương ứng với một Forum Channel. Hai cấu hình mẫu đã bám theo các ảnh bạn gửi: `issues` có các tag `Problem`, `Question`, `Stable Version`, `Nightly Version`, `False report`, `Solved`, `meta`; `suggestion` có các tag `Accept`, `Reject`, `Done`, `In Progress...`, `Maybe`, `Duplicate`, `Already exist`, `TBA`, `TBD`.
+The sample already contains the configured `issues` and `suggestion` channel IDs and the tag names shown in the server setup. Never commit `config.yaml` or share the bot token.
 
-`replace_existing_tags: false` là lựa chọn an toàn: bot giữ lại các tag đang có trong Discord rồi cập nhật hoặc bổ sung tag được khai báo. Nếu đặt thành `true`, bot sẽ gửi danh sách tag được khai báo làm danh sách chính của channel; chỉ nên dùng sau khi kiểm tra kỹ vì các tag ngoài cấu hình sẽ bị loại khỏi channel.
+```yaml
+bot_token: "replace-with-discord-bot-token"
+guild_id: "replace-with-server-id"
+moderator_role_ids: []
+replace_existing_tags: false
+prefix_autocorrect: true
+prefix_max_distance: 2
+```
 
-## Tạo Discord Application
+`replace_existing_tags: false` preserves tags that already exist in Discord and updates or appends declared tags. Set it to `true` only when the configured list should become the complete list of available tags for a channel.
 
-Trong Discord Developer Portal, tạo Application và thêm Bot User. Khi mời bot vào server, bật các scope `bot` và `applications.commands`. Bot cần nhìn thấy các Forum Channel được quản lý và có tối thiểu các quyền sau:
+## Create the Discord application
 
-| Quyền | Mục đích |
+Create an Application and Bot User in the [Discord Developer Portal](https://discord.com/developers/applications). Invite the bot with the `bot` and `applications.commands` scopes.
+
+The bot should be able to see both managed Forum Channels and should have at least the following permissions:
+
+| Permission | Purpose |
 | --- | --- |
-| View Channel | Đọc Forum Channel và post. |
-| Send Messages in Threads | Gửi phản hồi trong thread nếu sau này cần mở rộng. |
-| Manage Threads | Đổi tên, archive/unarchive, lock/unlock và quản lý post. |
-| Manage Channels | Cập nhật guidelines, available tags và cờ `Require Tags when posting`. |
-|
-Discord ghi nhận rằng Forum Channel chỉ chứa thread/post và không nhận message trực tiếp; việc tạo hoặc quản lý post dùng các endpoint thread tương ứng.[2] Các thread bị khóa hạn chế việc chỉnh sửa nếu không có `Manage Threads`, vì vậy nên cấp quyền này cho bot.[2]
+| View Channel | Read Forum Channels and posts. |
+| Send Messages in Threads | Send command results and moderation notices. |
+| Manage Threads | Rename, archive, unarchive, lock, unlock, and manage posts. |
+| Manage Channels | Update guidelines, available tags, and the `Require Tags when posting` flag. |
 
-## Chạy local
+Enable **Message Content Intent** under the Bot settings. Without it, slash commands continue to work, but prefix commands cannot read message content. The bot must also be invited with the `applications.commands` scope so guild slash commands can be registered.
 
-Cần Go 1.22 trở lên:
+## Run locally
+
+Go 1.22 or newer is required.
 
 ```bash
 git clone https://github.com/sang765/discord-forum-bot.git
 cd discord-forum-bot
 cp config.example.yaml config.yaml
-# sửa config.yaml
+# edit config.yaml
 make test
 make vet
 make build
 ./bin/discord-forum-bot
 ```
 
-Có thể đổi vị trí cấu hình bằng biến môi trường:
+Use another configuration path with:
 
 ```bash
 CONFIG_FILE=/path/to/config.yaml ./bin/discord-forum-bot
 ```
 
-Sau khi bot online, handler `Ready` sẽ đăng ký lại bộ slash command theo guild, đồng bộ toàn bộ channel trong cấu hình một lần và lắng nghe prefix command trong message. Khi sửa tag hoặc guidelines, chạy lại bot hoặc dùng `/forum-sync` cho từng channel.
+When the bot receives `Ready`, it overwrites the guild slash-command set and synchronizes all configured Forum Channels. After changing tags or guidelines, restart the bot or run `/forum-sync` for the relevant channel.
 
-Để prefix command hoạt động, cần bật **Message Content Intent** cho Bot User trong Discord Developer Portal. Nếu không bật intent này, slash command vẫn hoạt động nhưng bot sẽ không đọc được nội dung bắt đầu bằng dấu chấm.
-
-Có thể bật `prefix_autocorrect: true` để bot tự sửa một typo gần đúng nếu chỉ có một lệnh phù hợp trong khoảng cách `prefix_max_distance`. Ví dụ, `.sloved` không còn là lệnh hợp lệ và không được đăng ký như alias, nhưng sẽ được nhận diện là lỗi chính tả của `.solved`, sau đó bot báo rõ lệnh đã được sửa trước khi thực hiện. Nếu có nhiều lệnh cùng gần như nhau, bot sẽ không tự đoán để tránh thao tác nhầm.
-
-Lệnh `.dupe` chấp nhận cả post link dạng `https://discord.com/channels/<guild_id>/<post_id>` và message link dạng `https://discord.com/channels/<guild_id>/<post_id>/<message_id>`. Bot kiểm tra guild ID, xác định post từ channel ID trong link và từ chối nếu post không thuộc Forum Channel `suggestion`.
-
-Forum Channel `issues` có ID `1498327801923637439`; các lệnh `.solved` và `.false` được giới hạn vào channel này. Khi `.solved` hoặc `.false` thành công, bot sẽ gửi một message mention tác giả của post. Forum Channel `suggestion` có ID `1498328044635422790`. Với mọi post mới chưa có tag, bot sẽ tự động gắn `Maybe` ngay khi nhận được event tạo thread. `/fix-suggestion` dùng để sửa các post cũ chưa có tag, bao gồm cả post active và archived mà bot có quyền truy cập. `.reject` yêu cầu lý do dài tối đa 1000 ký tự và chỉ dùng trực tiếp trong suggestion post.
-
-## Chạy bằng Docker
+## Docker
 
 ```bash
 docker build -t discord-forum-bot:latest .
@@ -105,9 +144,9 @@ docker run --rm \
   discord-forum-bot:latest
 ```
 
-## Chạy bằng systemd
+## systemd
 
-File `deploy/discord-forum-bot.service` là unit mẫu. Có thể đặt project tại `/opt/discord-forum-bot`, tạo user hệ thống `discordbot`, rồi build binary vào `bin/`:
+The repository includes `deploy/discord-forum-bot.service`. The following is an example installation on a Linux host:
 
 ```bash
 sudo useradd --system --home /opt/discord-forum-bot --shell /usr/sbin/nologin discordbot
@@ -119,29 +158,28 @@ sudo systemctl enable --now discord-forum-bot
 sudo journalctl -u discord-forum-bot -f
 ```
 
-## Hai cách vận hành
+## Deployment options
 
-Project được đóng gói portable để server có thể chọn cách vận hành mà không phải đổi mã nguồn:
-
-| Cách vận hành | Trade-off | Chi phí | Độ phức tạp thiết lập |
+| Option | Trade-off | Cost | Setup complexity |
 | --- | --- | --- | --- |
-| Chạy trên máy cá nhân hoặc máy chủ Go-compatible hiện có | Không tốn hạ tầng mới, nhưng máy phải luôn online và người vận hành tự lo restart, cập nhật và bảo mật. | Không phát sinh nếu đã có máy. | Thấp đến trung bình. |
-| Chạy trên một máy chủ cloud hoặc nền tảng hỗ trợ Docker/Go | Bot độc lập với máy cá nhân và có thể chạy 24/7; đổi lại cần quản lý chi phí, secret và cập nhật hệ điều hành. | Phụ thuộc nhà cung cấp. | Trung bình. |
+| Existing personal machine or Go-compatible server | No new infrastructure cost, but the machine must stay online and the operator manages restarts, updates, and security. | None if hardware already exists. | Low to medium. |
+| Cloud server or Docker/Go-compatible platform | Independent 24/7 operation, but requires management of hosting cost, secrets, and operating-system updates. | Depends on the provider. | Medium. |
 
-Mình chưa tự chọn nơi deploy vì yêu cầu hiện tại mới dừng ở việc tạo project. Cả hai cách đều dùng cùng binary, `Dockerfile` và `systemd` unit trong repository.
+The binary, Dockerfile, and systemd unit are portable across both options.
 
-## Kiểm thử
+## Testing
 
-Project hiện có unit test cho validation cấu hình và việc merge tag, đồng thời chạy được:
+The project includes unit tests for configuration validation, tag merging, command parsing, link parsing, status restrictions, archived-thread pagination, and rejection reasons.
 
 ```bash
 GOTOOLCHAIN=local go test ./...
 GOTOOLCHAIN=local go vet ./...
+GOTOOLCHAIN=local go build ./cmd/bot
 ```
 
-Kiểm thử live cần token Discord và một server test; không nên đưa token vào source code hoặc commit vào Git.
+Live testing requires a Discord token and a test server. Do not put secrets in source code or commit them to Git.
 
-## Tài liệu tham chiếu
+## References
 
 [1]: https://docs.discord.com/developers/resources/channel "Discord Developer Documentation — Channels Resource"
 [2]: https://docs.discord.com/developers/topics/threads "Discord Developer Documentation — Threads"
