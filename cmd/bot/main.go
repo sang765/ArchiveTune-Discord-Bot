@@ -22,6 +22,10 @@ var commands = []*discordgo.ApplicationCommand{
 		},
 	},
 	{
+		Name:        "fix-suggestion",
+		Description: "Gắn tag Maybe cho các suggestion post đang chưa có tag",
+	},
+	{
 		Name:        "tag-add",
 		Description: "Thêm một tag vào post hiện tại hoặc post được chỉ định",
 		Options: []*discordgo.ApplicationCommandOption{
@@ -88,6 +92,19 @@ func main() {
 			return
 		}
 		log.Printf("synced %d managed Forum Channel(s)", len(cfg.Channels))
+	})
+	session.AddHandler(func(s *discordgo.Session, thread *discordgo.ThreadCreate) {
+		if thread == nil || thread.GuildID != cfg.GuildID || thread.ParentID != forumdiscord.SuggestionChannelID {
+			return
+		}
+		changed, err := manager.MaybeTagIfMissing(thread.ID)
+		if err != nil {
+			log.Printf("auto-tag suggestion post %s: %v", thread.ID, err)
+			return
+		}
+		if changed {
+			log.Printf("auto-tagged new suggestion post %s with Maybe", thread.ID)
+		}
 	})
 	session.AddHandler(func(s *discordgo.Session, interaction *discordgo.InteractionCreate) {
 		if interaction.Type != discordgo.InteractionApplicationCommand {
@@ -178,6 +195,13 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager
 			return
 		}
 		respond(s, i, fmt.Sprintf("Đã đồng bộ Forum Channel %s với %d tag.", channel.Mention(), len(channel.AvailableTags)), false)
+	case "fix-suggestion":
+		scanned, fixed, err := manager.FixSuggestion()
+		if err != nil {
+			respond(s, i, err.Error(), true)
+			return
+		}
+		respond(s, i, fmt.Sprintf("Đã quét %d suggestion post và gắn tag `Maybe` cho %d post chưa có tag.", scanned, fixed), false)
 	case "tag-add":
 		postID := postIDFrom(i, data.Options)
 		updated, err := manager.ApplyTag(postID, optionString(data.Options, "tag"))

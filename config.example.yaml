@@ -39,7 +39,7 @@ channels:
         emoji: "✅"
       - name: "meta"
 
-  - id: "replace-with-suggestion-forum-channel-id"
+  - id: "1498328044635422790"
     name: "suggestion"
     require_tag: false
     post_guidelines: |
