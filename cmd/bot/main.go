@@ -122,17 +122,25 @@ func main() {
 		}
 		if statusAction, link, matched, valid := forumdiscord.ParseSuggestionStatusCommand(message.Content); matched {
 			if !valid {
-				_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Cú pháp: `%s <Discord post link hoặc message link>`", statusAction.Command))
+				if statusAction.Command == ".dupe" {
+					_, _ = s.ChannelMessageSend(message.ChannelID, "Cú pháp: `.dupe <Discord post link hoặc message link>`")
+				} else {
+					_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Cú pháp: `%s` — hãy gửi lệnh trực tiếp trong post cần xử lý.", statusAction.Command))
+				}
 				return
 			}
 			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
 				_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng suggestion status command.")
 				return
 			}
-			targetID, err := forumdiscord.ParseDiscordPostLink(link, cfg.GuildID)
-			if err != nil {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể đọc post link: "+err.Error())
-				return
+			targetID := message.ChannelID
+			if link != "" {
+				var err error
+				targetID, err = forumdiscord.ParseDiscordPostLink(link, cfg.GuildID)
+				if err != nil {
+					_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể đọc post link: "+err.Error())
+					return
+				}
 			}
 			authorMention, authorErr := manager.ThreadAuthorMention(targetID)
 			if authorErr != nil {

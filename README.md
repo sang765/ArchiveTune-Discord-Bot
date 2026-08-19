@@ -27,9 +27,9 @@ Bot cố ý **không** xử lý nội dung AI, không lưu lịch sử, không q
 | `/post-state state:<open\|close\|lock\|unlock>` | Chạy trong post; hoặc thêm `post_id` | Thay đổi trạng thái archive hoặc lock của post. |
 | `.solved` | Gửi trực tiếp trong post trong `issues` | Gắn tag `Solved`, khóa post và đổi tên thành `[SOLVED] ...`. Chỉ hoạt động trong issues channel `1498327801923637439`. |
 | `.dupe <post link hoặc message link>` | Gửi trong bất kỳ channel nào có thể dùng command | Chỉ xử lý post thuộc `suggestion`: xóa tag cũ, gắn `Duplicate`, đóng, khóa và đổi tên thành `[DUPLICATE] ...`, sau đó mention tác giả post. |
-| `.done <post link hoặc message link>` | Gửi trong bất kỳ channel nào có thể dùng command | Chỉ xử lý post thuộc `suggestion`: thay tag bằng `Done`, đóng, khóa và đổi tên thành `[DONE] ...`. |
-| `.in-progress <post link hoặc message link>` | Gửi trong bất kỳ channel nào có thể dùng command | Chỉ xử lý post thuộc `suggestion`: thay tag bằng `In Progress...`, đóng, khóa và đổi tên thành `[IN PROGRESS] ...`. |
-| `.exist <post link hoặc message link>` | Gửi trong bất kỳ channel nào có thể dùng command | Chỉ xử lý post thuộc `suggestion`: thay tag bằng `Already exist`, đóng, khóa, đổi tên thành `[ALREADY EXIST] ...` và mention tác giả post. |
+| `.done` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Done`, đóng, khóa và đổi tên thành `[DONE] ...`. |
+| `.in-progress` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `In Progress...`, đóng, khóa và đổi tên thành `[IN PROGRESS] ...`. |
+| `.exist` | Gửi trực tiếp trong post suggestion | Thay toàn bộ tag bằng `Already exist`, đóng, khóa, đổi tên thành `[ALREADY EXIST] ...` và mention tác giả post. |
 | `/fix-suggestion` | Slash command dành cho moderator | Quét active và archived post trong suggestion channel `1498328044635422790`, sau đó gắn `Maybe` cho post chưa có tag. |
 | `.accept`, `.reject`, `.maybe` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |
 | `.duplicate`, `.already-exist`, `.tba`, `.tbd` | Gửi trực tiếp trong post | Áp dụng tag tương ứng, khóa post và thêm prefix trạng thái vào tên. |

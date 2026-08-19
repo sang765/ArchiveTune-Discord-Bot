@@ -29,10 +29,16 @@ func ParseSuggestionStatusCommand(content string) (action SuggestionStatusAction
 	if !matched {
 		return SuggestionStatusAction{}, "", false, false
 	}
-	if len(fields) != 2 {
+	if action.Command == ".dupe" {
+		if len(fields) != 2 {
+			return action, "", true, false
+		}
+		return action, fields[1], true, true
+	}
+	if len(fields) != 1 {
 		return action, "", true, false
 	}
-	return action, fields[1], true, true
+	return action, "", true, true
 }
 
 func (m *Manager) ApplySuggestionStatusAction(threadID string, action SuggestionStatusAction) (*discordgo.Channel, error) {
