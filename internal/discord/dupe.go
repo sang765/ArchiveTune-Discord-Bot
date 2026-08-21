@@ -27,24 +27,24 @@ func ParseDupeCommand(content string) (link string, matched bool, valid bool) {
 func ParseDiscordPostLink(rawLink, guildID string) (string, error) {
 	parsed, err := url.Parse(strings.TrimSpace(rawLink))
 	if err != nil || parsed.Scheme != "https" {
-		return "", fmt.Errorf("link phải là Discord HTTPS message link")
+		return "", fmt.Errorf("link must be a Discord HTTPS message link")
 	}
 	host := strings.ToLower(parsed.Hostname())
 	if host != "discord.com" && host != "discordapp.com" && !strings.HasSuffix(host, ".discord.com") {
-		return "", fmt.Errorf("link không thuộc Discord")
+		return "", fmt.Errorf("link is not a Discord link")
 	}
 	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	if (len(parts) != 3 && len(parts) != 4) || parts[0] != "channels" {
-		return "", fmt.Errorf("định dạng link cần là https://discord.com/channels/<guild_id>/<post_id> hoặc .../<message_id>")
+		return "", fmt.Errorf("link must use https://discord.com/channels/<guild_id>/<post_id> or .../<message_id>")
 	}
 	if parts[1] != guildID {
-		return "", fmt.Errorf("link thuộc server khác")
+		return "", fmt.Errorf("link belongs to another server")
 	}
 	if !isSnowflake(parts[2]) {
-		return "", fmt.Errorf("link chứa post ID không hợp lệ")
+		return "", fmt.Errorf("link contains an invalid post ID")
 	}
 	if len(parts) == 4 && !isSnowflake(parts[3]) {
-		return "", fmt.Errorf("link chứa message ID không hợp lệ")
+		return "", fmt.Errorf("link contains an invalid message ID")
 	}
 	return parts[2], nil
 }

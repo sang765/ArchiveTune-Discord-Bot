@@ -138,7 +138,7 @@ func (m *Manager) ApplyPrefixAction(threadID string, action PrefixAction) (*disc
 		return nil, err
 	}
 	if !PrefixActionAllowedForChannel(action, cfg.ID) {
-		return nil, fmt.Errorf("%s không được phép dùng trong Forum Channel này", action.Command)
+		return nil, fmt.Errorf("%s is not allowed in this Forum Channel", action.Command)
 	}
 	if action.Command == ".tba" || action.Command == ".tbd" {
 		tagID, err := m.tagID(cfg, action.TagName)

@@ -48,7 +48,7 @@ func (m *Manager) ApplySuggestionStatusAction(threadID string, action Suggestion
 		return nil, err
 	}
 	if !strings.EqualFold(strings.TrimSpace(cfg.Name), "suggestion") {
-		return nil, fmt.Errorf("%s chỉ được phép dùng cho Forum Channel suggestion", action.Command)
+		return nil, fmt.Errorf("%s is only allowed in the suggestion Forum Channel", action.Command)
 	}
 
 	tagID, err := m.tagID(cfg, action.TagName)

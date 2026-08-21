@@ -16,50 +16,50 @@ import (
 var commands = []*discordgo.ApplicationCommand{
 	{
 		Name:        "forum-sync",
-		Description: "Đồng bộ guideline, tag và trạng thái bắt buộc tag cho Forum Channel",
+		Description: "Sync guidelines, tags, and required-tag settings for a Forum Channel",
 		Options: []*discordgo.ApplicationCommandOption{
-			{Name: "channel", Description: "Forum Channel cần đồng bộ", Type: discordgo.ApplicationCommandOptionChannel, Required: true},
+			{Name: "channel", Description: "Forum Channel to sync", Type: discordgo.ApplicationCommandOptionChannel, Required: true},
 		},
 	},
 	{
 		Name:        "fix-suggestion",
-		Description: "Gắn tag Maybe cho các suggestion post đang chưa có tag",
+		Description: "Apply the Maybe tag to suggestion posts without tags",
 	},
 	{
 		Name:        "tag-add",
-		Description: "Thêm một tag vào post hiện tại hoặc post được chỉ định",
+		Description: "Add a tag to the current or specified post",
 		Options: []*discordgo.ApplicationCommandOption{
-			{Name: "tag", Description: "Tên tag đã cấu hình", Type: discordgo.ApplicationCommandOptionString, Required: true},
-			{Name: "post_id", Description: "ID post; bỏ trống để dùng post hiện tại", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "tag", Description: "Configured tag name", Type: discordgo.ApplicationCommandOptionString, Required: true},
+			{Name: "post_id", Description: "Post ID; leave empty to use the current post", Type: discordgo.ApplicationCommandOptionString, Required: false},
 		},
 	},
 	{
 		Name:        "tag-remove",
-		Description: "Gỡ một tag khỏi post hiện tại hoặc post được chỉ định",
+		Description: "Remove a tag from the current or specified post",
 		Options: []*discordgo.ApplicationCommandOption{
-			{Name: "tag", Description: "Tên tag đã cấu hình", Type: discordgo.ApplicationCommandOptionString, Required: true},
-			{Name: "post_id", Description: "ID post; bỏ trống để dùng post hiện tại", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "tag", Description: "Configured tag name", Type: discordgo.ApplicationCommandOptionString, Required: true},
+			{Name: "post_id", Description: "Post ID; leave empty to use the current post", Type: discordgo.ApplicationCommandOptionString, Required: false},
 		},
 	},
 	{
 		Name:        "post-rename",
-		Description: "Đổi tên một post trong Forum Channel được quản lý",
+		Description: "Rename a managed Forum Channel post",
 		Options: []*discordgo.ApplicationCommandOption{
-			{Name: "name", Description: "Tên mới của post", Type: discordgo.ApplicationCommandOptionString, Required: true},
-			{Name: "post_id", Description: "ID post; bỏ trống để dùng post hiện tại", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "name", Description: "New post title", Type: discordgo.ApplicationCommandOptionString, Required: true},
+			{Name: "post_id", Description: "Post ID; leave empty to use the current post", Type: discordgo.ApplicationCommandOptionString, Required: false},
 		},
 	},
 	{
 		Name:        "post-state",
-		Description: "Đóng/mở hoặc khóa/mở khóa post",
+		Description: "Open or close, and lock or unlock, a post",
 		Options: []*discordgo.ApplicationCommandOption{
-			{Name: "state", Description: "Trạng thái muốn đặt", Type: discordgo.ApplicationCommandOptionString, Required: true, Choices: []*discordgo.ApplicationCommandOptionChoice{
+			{Name: "state", Description: "State to apply", Type: discordgo.ApplicationCommandOptionString, Required: true, Choices: []*discordgo.ApplicationCommandOptionChoice{
 				{Name: "open", Value: "open"},
 				{Name: "close", Value: "close"},
 				{Name: "lock", Value: "lock"},
 				{Name: "unlock", Value: "unlock"},
 			}},
-			{Name: "post_id", Description: "ID post; bỏ trống để dùng post hiện tại", Type: discordgo.ApplicationCommandOptionString, Required: false},
+			{Name: "post_id", Description: "Post ID; leave empty to use the current post", Type: discordgo.ApplicationCommandOptionString, Required: false},
 		},
 	},
 }
@@ -111,7 +111,7 @@ func main() {
 			return
 		}
 		if !forumdiscord.HasModeratorAccess(interaction, cfg) {
-			respond(s, interaction, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng lệnh này.", true)
+			respond(s, interaction, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use this command.", true)
 			return
 		}
 		handleCommand(s, interaction, manager, cfg)
@@ -122,11 +122,11 @@ func main() {
 		}
 		if reason, matched, valid := forumdiscord.ParseRejectCommand(message.Content); matched {
 			if !valid {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Cú pháp: `.reject <lý do từ chối>` — lý do là bắt buộc và tối đa 1000 ký tự.")
+				_, _ = s.ChannelMessageSend(message.ChannelID, "Usage: `.reject <reason>` — the reason is required and must be at most 1,000 characters.")
 				return
 			}
 			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator để dùng `.reject`.")
+				_, _ = s.ChannelMessageSend(message.ChannelID, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use `.reject`.")
 				return
 			}
 			statusAction := forumdiscord.SuggestionStatusAction{Command: ".reject", TagName: "Reject", TitlePrefix: "[REJECTED]"}
@@ -136,10 +136,10 @@ func main() {
 			}
 			updated, err := manager.ApplySuggestionStatusAction(message.ChannelID, statusAction)
 			if err != nil {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý `.reject`: "+err.Error())
+				_, _ = s.ChannelMessageSend(message.ChannelID, "Could not process `.reject`: "+err.Error())
 				return
 			}
-			messageText := fmt.Sprintf("Đã từ chối suggestion: thay tag bằng `Reject`, đóng, khóa và đổi tên thành **%s**. Lý do: %s", updated.Name, reason)
+			messageText := fmt.Sprintf("Rejected the suggestion: replaced its tags with `Reject`, closed and locked the post, and renamed it to **%s**. Reason: %s", updated.Name, reason)
 			if authorMention != "" {
 				messageText = authorMention + " " + messageText
 			}
@@ -150,14 +150,14 @@ func main() {
 		if statusAction, link, matched, valid := forumdiscord.ParseSuggestionStatusCommand(message.Content); matched {
 			if !valid {
 				if statusAction.Command == ".dupe" {
-					_, _ = s.ChannelMessageSend(message.ChannelID, "Cú pháp: `.dupe <Discord post link hoặc message link>`")
+					_, _ = s.ChannelMessageSend(message.ChannelID, "Usage: `.dupe <Discord post link or message link>`")
 				} else {
-					_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Cú pháp: `%s` — hãy gửi lệnh trực tiếp trong post cần xử lý.", statusAction.Command))
+					_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Usage: `%s` — send this command directly in the post you want to process.", statusAction.Command))
 				}
 				return
 			}
 			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng suggestion status command.")
+				_, _ = s.ChannelMessageSend(message.ChannelID, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use suggestion status commands.")
 				return
 			}
 			targetID := message.ChannelID
@@ -165,7 +165,7 @@ func main() {
 				var err error
 				targetID, err = forumdiscord.ParseDiscordPostLink(link, cfg.GuildID)
 				if err != nil {
-					_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể đọc post link: "+err.Error())
+					_, _ = s.ChannelMessageSend(message.ChannelID, "Could not parse post link: "+err.Error())
 					return
 				}
 			}
@@ -175,10 +175,10 @@ func main() {
 			}
 			updated, err := manager.ApplySuggestionStatusAction(targetID, statusAction)
 			if err != nil {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý "+statusAction.Command+": "+err.Error())
+				_, _ = s.ChannelMessageSend(message.ChannelID, "Could not process "+statusAction.Command+": "+err.Error())
 				return
 			}
-			messageText := fmt.Sprintf("Đã áp dụng `%s`: thay toàn bộ tag bằng `%s`, đóng, khóa và đổi tên thành **%s**.", statusAction.Command, statusAction.TagName, updated.Name)
+			messageText := fmt.Sprintf("Applied `%s`: replaced all tags with `%s`, closed and locked the post, and renamed it to **%s**.", statusAction.Command, statusAction.TagName, updated.Name)
 			if authorMention != "" {
 				messageText = authorMention + " " + messageText
 			}
@@ -200,7 +200,7 @@ func main() {
 			return
 		}
 		if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-			_, _ = s.ChannelMessageSend(message.ChannelID, "Bạn cần quyền `Manage Threads`, `Administrator` hoặc role moderator được cấu hình để dùng prefix command.")
+			_, _ = s.ChannelMessageSend(message.ChannelID, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use prefix commands.")
 			return
 		}
 		authorMention := ""
@@ -213,18 +213,18 @@ func main() {
 		}
 		updated, err := manager.ApplyPrefixAction(message.ChannelID, action)
 		if err != nil {
-			_, _ = s.ChannelMessageSend(message.ChannelID, "Không thể xử lý "+action.Command+": "+err.Error())
+			_, _ = s.ChannelMessageSend(message.ChannelID, "Could not process "+action.Command+": "+err.Error())
 			return
 		}
-		messageText := fmt.Sprintf("Đã áp dụng `%s`: tag `%s`, khóa post và đổi tên thành **%s**.", action.Command, action.TagName, updated.Name)
+		messageText := fmt.Sprintf("Applied `%s`: set tag `%s`, locked the post, and renamed it to **%s**.", action.Command, action.TagName, updated.Name)
 		if action.Command == ".tba" || action.Command == ".tbd" {
-			messageText = fmt.Sprintf("Đã áp dụng `%s`: xóa tag cũ và chỉ giữ tag `%s`; post không bị lock, close hoặc đổi tên.", action.Command, action.TagName)
+			messageText = fmt.Sprintf("Applied `%s`: removed all previous tags and kept only `%s`; the post was not locked, closed, or renamed.", action.Command, action.TagName)
 		}
 		if authorMention != "" {
 			messageText = authorMention + " " + messageText
 		}
 		if originalCommand != "" {
-			messageText = fmt.Sprintf("Mình đã tự sửa `%s` thành `%s`. %s", originalCommand, action.Command, messageText)
+			messageText = fmt.Sprintf("I corrected `%s` to `%s`. %s", originalCommand, action.Command, messageText)
 		}
 		_, _ = s.ChannelMessageSend(message.ChannelID, messageText)
 	})
@@ -242,25 +242,25 @@ func main() {
 }
 
 func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager *forumdiscord.Manager, cfg *config.Config) {
+	if err := deferInteraction(s, i); err != nil {
+		log.Printf("defer slash command interaction: %v", err)
+		return
+	}
 	data := i.ApplicationCommandData()
 	switch data.Name {
 	case "forum-sync":
 		channelID := optionString(data.Options, "channel")
 		channel, err := manager.SyncChannel(channelID)
 		if err != nil {
-			respond(s, i, err.Error(), true)
+			editInteraction(s, i, err.Error(), true)
 			return
 		}
-		respond(s, i, fmt.Sprintf("Đã đồng bộ Forum Channel %s với %d tag.", channel.Mention(), len(channel.AvailableTags)), false)
+		editInteraction(s, i, fmt.Sprintf("Synced Forum Channel %s with %d tags.", channel.Mention(), len(channel.AvailableTags)), false)
 	case "fix-suggestion":
-		if err := deferInteraction(s, i); err != nil {
-			log.Printf("defer /fix-suggestion interaction: %v", err)
-			return
-		}
 		scanned, fixed, err := manager.FixSuggestion()
-		content := fmt.Sprintf("Đã quét %d suggestion post và gắn tag `Maybe` cho %d post chưa có tag.", scanned, fixed)
+		content := fmt.Sprintf("Scanned %d suggestion posts and applied the `Maybe` tag to %d posts that had no tags.", scanned, fixed)
 		if err != nil {
-			content = "Không thể sửa suggestion post: " + err.Error()
+			content = "Could not fix suggestion posts: " + err.Error()
 		}
 		if _, editErr := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: &content}); editErr != nil {
 			log.Printf("edit /fix-suggestion interaction response: %v", editErr)
@@ -269,40 +269,43 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager
 		postID := postIDFrom(i, data.Options)
 		updated, err := manager.ApplyTag(postID, optionString(data.Options, "tag"))
 		if err != nil {
-			respond(s, i, err.Error(), true)
+			editInteraction(s, i, err.Error(), true)
 			return
 		}
-		respond(s, i, fmt.Sprintf("Đã thêm tag vào post %s.", updated.Mention()), false)
+		editInteraction(s, i, fmt.Sprintf("Added the tag to post %s.", updated.Mention()), false)
 	case "tag-remove":
 		postID := postIDFrom(i, data.Options)
 		updated, err := manager.RemoveTag(postID, optionString(data.Options, "tag"))
 		if err != nil {
-			respond(s, i, err.Error(), true)
+			editInteraction(s, i, err.Error(), true)
 			return
 		}
-		respond(s, i, fmt.Sprintf("Đã gỡ tag khỏi post %s.", updated.Mention()), false)
+		editInteraction(s, i, fmt.Sprintf("Removed the tag from post %s.", updated.Mention()), false)
 	case "post-rename":
 		postID := postIDFrom(i, data.Options)
 		updated, err := manager.RenameThread(postID, optionString(data.Options, "name"))
 		if err != nil {
-			respond(s, i, err.Error(), true)
+			editInteraction(s, i, err.Error(), true)
 			return
 		}
-		respond(s, i, fmt.Sprintf("Đã đổi tên post thành **%s**.", updated.Name), false)
+		editInteraction(s, i, fmt.Sprintf("Renamed the post to **%s**.", updated.Name), false)
 	case "post-state":
 		postID := postIDFrom(i, data.Options)
 		state := optionString(data.Options, "state")
 		if state != "open" && state != "close" && state != "lock" && state != "unlock" {
-			respond(s, i, "Trạng thái không hợp lệ.", true)
+			editInteraction(s, i, "Invalid post state.", true)
 			return
 		}
 		updated, err := manager.SetThreadState(postID, state)
 		if err != nil {
-			respond(s, i, err.Error(), true)
+			editInteraction(s, i, err.Error(), true)
 			return
 		}
-		respond(s, i, fmt.Sprintf("Đã đặt trạng thái `%s` cho post %s.", state, updated.Mention()), false)
+		editInteraction(s, i, fmt.Sprintf("Set post state to `%s` for post %s.", state, updated.Mention()), false)
+	default:
+		editInteraction(s, i, "Unknown slash command.", true)
 	}
+
 }
 
 func optionString(options []*discordgo.ApplicationCommandInteractionDataOption, name string) string {
@@ -325,6 +328,12 @@ func deferInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) erro
 	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
 	})
+}
+
+func editInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, content string, _ bool) {
+	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: &content}); err != nil {
+		log.Printf("edit slash command response: %v", err)
+	}
 }
 
 func respond(s *discordgo.Session, i *discordgo.InteractionCreate, content string, ephemeral bool) {
