@@ -144,6 +144,18 @@ docker run --rm \
   discord-forum-bot:latest
 ```
 
+## Pterodactyl startup script
+
+Repository には `run.sh` が含まれています。Pterodactyl の startup command を `./${EXECUTABLE}`、`EXECUTABLE` を `run.sh`、`GO PACKAGE` を `./cmd/bot` に設定してください。script は project directory に移動し、container に Go があれば新しい Linux binary を build してから `CONFIG_FILE=./config.yaml` で bot を起動します。Go がない場合は、既存の executable `./discord-forum-bot` を使用します。
+
+```text
+Startup Command: ./\${EXECUTABLE}
+GO PACKAGE: ./cmd/bot
+EXECUTABLE: run.sh
+```
+
+これにより、Pterodactyl File Manager で source を編集した後、server を restart するだけで自動的に再 build できます。自動 build には Go 1.22 以降が必要です。Go がない場合は、事前に build した `discord-forum-bot` binary を upload してください。
+
 ## systemd
 
 Repository には `deploy/discord-forum-bot.service` が含まれています。Linux host でのインストール例:

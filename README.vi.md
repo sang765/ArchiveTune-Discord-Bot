@@ -144,6 +144,18 @@ docker run --rm \
   discord-forum-bot:latest
 ```
 
+## Startup script cho Pterodactyl
+
+Repository có file `run.sh`. Đặt lệnh khởi động Pterodactyl là `./${EXECUTABLE}`, đặt `EXECUTABLE` thành `run.sh` và `GO_PACKAGE` thành `./cmd/bot`. Script sẽ chuyển vào thư mục project, tự build binary Linux mới nếu container có Go, rồi chạy bot với `CONFIG_FILE=./config.yaml`. Nếu không có Go, script sẽ dùng binary executable có sẵn là `./discord-forum-bot`.
+
+```text
+Lệnh khởi động: ./\${EXECUTABLE}
+GO PACKAGE: ./cmd/bot
+EXECUTABLE: run.sh
+```
+
+Nhờ vậy, mỗi lần bạn sửa source bằng File Manager rồi restart server, bot sẽ tự build lại mà không cần chạy `go build` thủ công. Container cần có Go 1.22+ để tự build; nếu không, hãy upload binary đã build với tên `discord-forum-bot`.
+
 ## systemd
 
 Repository có file `deploy/discord-forum-bot.service`. Ví dụ cài đặt trên Linux host:
