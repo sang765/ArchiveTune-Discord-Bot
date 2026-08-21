@@ -14,6 +14,7 @@ type SuggestionStatusAction struct {
 }
 
 var suggestionStatusActions = map[string]SuggestionStatusAction{
+	".accept":      {Command: ".accept", TagName: "Accept", TitlePrefix: "[ACCEPTED]"},
 	".dupe":        {Command: ".dupe", TagName: "Duplicate", TitlePrefix: "[DUPLICATE]"},
 	".reject":      {Command: ".reject", TagName: "Reject", TitlePrefix: "[REJECTED]"},
 	".done":        {Command: ".done", TagName: "Done", TitlePrefix: "[DONE]"},

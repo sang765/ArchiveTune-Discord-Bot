@@ -10,6 +10,7 @@ func TestParseSuggestionStatusCommand(t *testing.T) {
 		prefix  string
 		link    string
 	}{
+		{content: ".accept", command: ".accept", tag: "Accept", prefix: "[ACCEPTED]"},
 		{content: ".dupe https://discord.com/channels/123/456/789", command: ".dupe", tag: "Duplicate", prefix: "[DUPLICATE]", link: "https://discord.com/channels/123/456/789"},
 		{content: ".done", command: ".done", tag: "Done", prefix: "[DONE]"},
 		{content: ".in-progress", command: ".in-progress", tag: "In Progress...", prefix: "[IN PROGRESS]"},
