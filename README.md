@@ -1,8 +1,8 @@
-# Discord Forum Tag Manager Bot
+# ArchiveTune Bot
 
 [English](README.md) · [日本語](README.ja.md) · [Tiếng Việt](README.vi.md)
 
-A focused Discord bot written in **Go** for managing tags and posts in Discord Forum Channels. The bot has no database and does not process content with AI. Discord remains the source of truth, while `config.yaml` stores channel and bot settings.
+**ArchiveTune Bot** is a focused Discord bot written in **Go** for managing tags and posts in Discord Forum Channels. The bot has no database and does not process content with AI. Discord remains the source of truth, while `config.yaml` stores channel and bot settings.
 
 Discord represents a Forum post as a thread. Available Forum tags are stored on the parent channel, while the tags applied to an individual post are stored on the thread.[1] [2] This bot therefore uses the Gateway for realtime events and the Discord REST API for deterministic post and tag operations.
 

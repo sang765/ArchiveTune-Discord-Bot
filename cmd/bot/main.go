@@ -86,7 +86,7 @@ func main() {
 	manager := forumdiscord.NewManager(session, cfg)
 
 	session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
-		log.Printf("logged in as %s#%s", ready.User.Username, ready.User.Discriminator)
+		log.Printf("ArchiveTune Bot logged in as %s#%s", ready.User.Username, ready.User.Discriminator)
 		if _, err := s.ApplicationCommandBulkOverwrite(ready.User.ID, cfg.GuildID, commands); err != nil {
 			log.Printf("register slash commands: %v", err)
 			return
@@ -253,12 +253,12 @@ func main() {
 		log.Fatalf("open Discord gateway: %v", err)
 	}
 	defer session.Close()
-	log.Println("bot is running; press Ctrl+C to stop")
+	log.Println("ArchiveTune Bot is running; press Ctrl+C to stop")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
-	log.Println("shutting down")
+	log.Println("ArchiveTune Bot shutting down")
 }
 
 func logMessageEvent(message *discordgo.MessageCreate) {

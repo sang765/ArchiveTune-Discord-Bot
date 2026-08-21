@@ -5,8 +5,8 @@ import "github.com/bwmarrin/discordgo"
 // HelpEmbed returns the complete command reference shown by .help and /help.
 func HelpEmbed() *discordgo.MessageEmbed {
 	return &discordgo.MessageEmbed{
-		Title:       "Forum Bot Help",
-		Description: "Commands for managing issues and suggestion Forum Channel posts.",
+		Title:       "ArchiveTune Bot Help",
+		Description: "ArchiveTune Bot commands for managing issues and suggestion Forum Channel posts.",
 		Color:       0x5865F2,
 		Fields: []*discordgo.MessageEmbedField{
 			{
@@ -51,7 +51,7 @@ func HelpEmbed() *discordgo.MessageEmbed {
 			},
 		},
 		Footer: &discordgo.MessageEmbedFooter{
-			Text: "Prefix commands require Message Content Intent and moderator access.",
+			Text: "ArchiveTune Bot · Prefix commands require Message Content Intent and moderator access.",
 		},
 	}
 }

@@ -10,7 +10,7 @@ func TestHelpEmbedListsCommandGroups(t *testing.T) {
 	if embed == nil {
 		t.Fatal("expected help embed")
 	}
-	if embed.Title != "Forum Bot Help" {
+	if embed.Title != "ArchiveTune Bot Help" {
 		t.Fatalf("unexpected title: %q", embed.Title)
 	}
 

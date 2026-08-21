@@ -1,8 +1,8 @@
-# Discord Forum Tag Manager Bot
+# ArchiveTune Bot
 
 [English](README.md) · [日本語](README.ja.md) · [Tiếng Việt](README.vi.md)
 
-これは、Discord の Forum Channel におけるタグと投稿を管理するための **Go 製 Discord bot** です。bot はデータベースを使用せず、AI による本文処理も行いません。Discord を正規のデータソースとし、`config.yaml` に bot と channel の設定を保存します。
+**ArchiveTune Bot** は、Discord の Forum Channel におけるタグと投稿を管理するための **Go 製 Discord bot** です。bot はデータベースを使用せず、AI による本文処理も行いません。Discord を正規のデータソースとし、`config.yaml` に bot と channel の設定を保存します。
 
 Discord では Forum の各投稿は thread として扱われます。利用可能な Forum タグは親 channel に保存され、個々の投稿に適用されたタグは thread に保存されます。[1] [2] そのため、この bot はリアルタイムイベントに Gateway を使用し、タグと投稿の決定的な操作に Discord REST API を使用します。
 
