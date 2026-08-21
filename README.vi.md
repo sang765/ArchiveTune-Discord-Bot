@@ -156,6 +156,8 @@ EXECUTABLE: run.sh
 
 Nhờ vậy, mỗi lần bạn sửa source bằng File Manager rồi restart server, bot sẽ tự build lại mà không cần chạy `go build` thủ công. Lần chạy đầu cần HTTPS outbound tới `go.dev` và đủ dung lượng để lưu Go local trong `.tools/go`; các lần sau sẽ dùng lại toolchain đã tải. Nếu container không có mạng, hãy upload binary đã build với tên `discord-forum-bot`.
 
+Để cập nhật source tự động, chỉ cần upload một file `.zip` vào thư mục root rồi restart server. `run.sh` sẽ chọn ZIP mới nhất, kiểm tra và giải nén, xóa source cũ, giữ lại `run.sh`, `config.yaml` và `.tools`, sau đó xóa các file ZIP ở root khi thay thế thành công. Nếu archive bị lỗi hoặc chứa đường dẫn không an toàn, script sẽ từ chối và giữ nguyên source hiện tại.
+
 ## systemd
 
 Repository có file `deploy/discord-forum-bot.service`. Ví dụ cài đặt trên Linux host:

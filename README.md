@@ -156,6 +156,8 @@ EXECUTABLE: run.sh
 
 This allows source edits made through the Pterodactyl File Manager to be picked up on the next restart without manually running `go build`. The first start needs outbound HTTPS access to `go.dev` and enough disk space to store the user-local toolchain under `.tools/go`; later starts reuse it. If the container has no network access, upload a prebuilt executable named `discord-forum-bot` instead.
 
+For a hands-off source update, upload a `.zip` archive to the project root and restart the server. `run.sh` selects the newest ZIP, validates and extracts it, removes the old source, preserves `run.sh`, `config.yaml`, and `.tools`, and deletes root ZIP files after a successful replacement. A malformed or unsafe archive is rejected without deleting the current source.
+
 ## systemd
 
 The repository includes `deploy/discord-forum-bot.service`. The following is an example installation on a Linux host:

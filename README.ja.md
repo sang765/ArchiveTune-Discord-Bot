@@ -156,6 +156,8 @@ EXECUTABLE: run.sh
 
 これにより、Pterodactyl File Manager で source を編集した後、server を restart するだけで自動的に再 build できます。初回起動には `go.dev` への HTTPS outbound access と、`.tools/go` に toolchain を保存するための空き容量が必要です。以降はダウンロード済みの toolchain を再利用します。container に network access がない場合は、事前に build した `discord-forum-bot` binary を upload してください。
 
+source を自動更新するには、`.zip` archive を project root に upload して server を restart するだけです。`run.sh` は最新の ZIP を選択して検証・展開し、古い source を削除します。ただし `run.sh`、`config.yaml`、`.tools` は保持し、更新成功後に root の ZIP を削除します。壊れた archive や安全でない path を含む archive は拒否され、現在の source は削除されません。
+
 ## systemd
 
 Repository には `deploy/discord-forum-bot.service` が含まれています。Linux host でのインストール例:
