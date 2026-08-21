@@ -117,9 +117,11 @@ func main() {
 		handleCommand(s, interaction, manager, cfg)
 	})
 	session.AddHandler(func(s *discordgo.Session, message *discordgo.MessageCreate) {
-		if message.Author == nil || message.Author.Bot || message.GuildID != cfg.GuildID {
+		logMessageEvent(message)
+		if message == nil || message.Author == nil || message.Author.Bot || message.GuildID != cfg.GuildID {
 			return
 		}
+		prefixCandidate := strings.HasPrefix(strings.TrimSpace(message.Content), ".")
 		if reason, matched, valid := forumdiscord.ParseRejectCommand(message.Content); matched {
 			if !valid {
 				_, _ = s.ChannelMessageSend(message.ChannelID, "Usage: `.reject <reason>` — the reason is required and must be at most 1,000 characters.")
@@ -197,9 +199,14 @@ func main() {
 			}
 		}
 		if !ok {
+			if prefixCandidate {
+				log.Printf("prefix command not recognized: guild_id=%s channel_id=%s content=%q", message.GuildID, message.ChannelID, strings.TrimSpace(message.Content))
+			}
 			return
 		}
+		log.Printf("prefix command recognized: guild_id=%s channel_id=%s command=%s", message.GuildID, message.ChannelID, action.Command)
 		if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
+			log.Printf("prefix command denied: channel_id=%s command=%s member_permissions=%d roles=%v", message.ChannelID, action.Command, memberPermissions(message), memberRoleIDs(message))
 			_, _ = s.ChannelMessageSend(message.ChannelID, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use prefix commands.")
 			return
 		}
@@ -211,8 +218,10 @@ func main() {
 				log.Printf("get author for %s: %v", message.ChannelID, authorErr)
 			}
 		}
+		log.Printf("prefix command applying: channel_id=%s command=%s", message.ChannelID, action.Command)
 		updated, err := manager.ApplyPrefixAction(message.ChannelID, action)
 		if err != nil {
+			log.Printf("prefix command failed: channel_id=%s command=%s error=%v", message.ChannelID, action.Command, err)
 			_, _ = s.ChannelMessageSend(message.ChannelID, "Could not process "+action.Command+": "+err.Error())
 			return
 		}
@@ -227,6 +236,7 @@ func main() {
 			messageText = fmt.Sprintf("I corrected `%s` to `%s`. %s", originalCommand, action.Command, messageText)
 		}
 		_, _ = s.ChannelMessageSend(message.ChannelID, messageText)
+		log.Printf("prefix command completed: channel_id=%s command=%s post_name=%q", message.ChannelID, action.Command, updated.Name)
 	})
 
 	if err := session.Open(); err != nil {
@@ -239,6 +249,42 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 	log.Println("shutting down")
+}
+
+func logMessageEvent(message *discordgo.MessageCreate) {
+	if message == nil {
+		log.Printf("message event received: message=nil")
+		return
+	}
+	authorID := ""
+	authorBot := false
+	if message.Author != nil {
+		authorID = message.Author.ID
+		authorBot = message.Author.Bot
+	}
+	content := strings.TrimSpace(message.Content)
+	prefixCandidate := strings.HasPrefix(content, ".")
+	if !prefixCandidate && os.Getenv("DEBUG_MESSAGE_EVENTS") != "1" {
+		return
+	}
+	log.Printf("message event received: message_id=%s guild_id=%s channel_id=%s author_id=%s author_bot=%t content_len=%d starts_with_dot=%t", message.ID, message.GuildID, message.ChannelID, authorID, authorBot, len([]rune(content)), prefixCandidate)
+	if prefixCandidate {
+		log.Printf("message content for prefix candidate: %q", content)
+	}
+}
+
+func memberPermissions(message *discordgo.MessageCreate) uint64 {
+	if message == nil || message.Member == nil {
+		return 0
+	}
+	return uint64(message.Member.Permissions)
+}
+
+func memberRoleIDs(message *discordgo.MessageCreate) []string {
+	if message == nil || message.Member == nil {
+		return nil
+	}
+	return message.Member.Roles
 }
 
 func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager *forumdiscord.Manager, cfg *config.Config) {
