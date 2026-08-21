@@ -30,6 +30,7 @@ Discord では Forum の各投稿は thread として扱われます。利用可
 
 | Command | 使用方法 | 動作 |
 | --- | --- | --- |
+| `/help` | すべての channel で使用できます。 | すべての command を Embed で表示します。 |
 | `/forum-sync channel:<Forum Channel>` | `config.yaml` を変更した後に実行します。 | ガイドライン、タグ、必須タグフラグを同期します。 |
 | `/fix-suggestion` | moderator 用 command です。 | bot がアクセスできる active / archived の suggestion 投稿を走査し、タグのない投稿に `Maybe` を付けます。 |
 | `/tag-add tag:<name>` | 投稿内で実行するか、`post_id` を指定します。 | 既存タグを削除せず、設定済みタグを追加します。 |
@@ -39,7 +40,11 @@ Discord では Forum の各投稿は thread として扱われます。利用可
 
 ## Prefix command
 
-Prefix command は通常の message として送信します。利用には **Message Content Intent** と moderator 権限が必要です。
+Prefix command は通常の message として送信します。利用には **Message Content Intent** と moderator 権限が必要です。ただし `.help` はすべての member が使用できます。
+
+| Command | 動作 |
+| --- | --- |
+| `.help` | すべての command を Embed で表示します。 |
 
 ### issues command
 
@@ -60,7 +65,9 @@ Prefix command は通常の message として送信します。利用には **Me
 | `.reject <理由>` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `Reject` に置換し、投稿を close / lock して `[REJECTED] <旧タイトル>` に変更し、作成者を mention して理由を送信します。理由は必須で、1,000 文字以内です。 |
 | `.tba` | suggestion 投稿内で直接実行します。 | 既存タグをすべて削除し、`TBA` のみを残します。close、lock、タイトル変更は行いません。 |
 | `.tbd` | suggestion 投稿内で直接実行します。 | 既存タグをすべて削除し、`TBD` のみを残します。close、lock、タイトル変更は行いません。 |
-| `.accept`、`.maybe` | 管理対象の投稿内で直接実行します。 | 設定済み status tag を適用し、投稿を lock して対応する status prefix を追加します。 |
+| `.accept` | suggestion 投稿内で直接実行します。 | 既存タグをすべて `Accept` に置換し、投稿を close / lock して `[ACCEPTED] <旧タイトル>` に変更します。 |
+| `.accepted` | suggestion 投稿内で直接実行します。 | `.accept` の alias です。 |
+| `.maybe` | 管理対象の投稿内で直接実行します。 | 設定済み tag を適用し、投稿を lock して対応する status prefix を追加します。 |
 
 `.done`、`.in-progress`、`.exist`、`.reject`、`.tba`、`.tbd` にリンクは必要ありません。`.dupe` は次の形式に対応します。
 

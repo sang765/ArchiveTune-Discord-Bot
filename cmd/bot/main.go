@@ -15,6 +15,10 @@ import (
 
 var commands = []*discordgo.ApplicationCommand{
 	{
+		Name:        "help",
+		Description: "Show all bot commands",
+	},
+	{
 		Name:        "forum-sync",
 		Description: "Sync guidelines, tags, and required-tag settings for a Forum Channel",
 		Options: []*discordgo.ApplicationCommandOption{
@@ -110,7 +114,7 @@ func main() {
 		if interaction.Type != discordgo.InteractionApplicationCommand {
 			return
 		}
-		if !forumdiscord.HasModeratorAccess(interaction, cfg) {
+		if interaction.ApplicationCommandData().Name != "help" && !forumdiscord.HasModeratorAccess(interaction, cfg) {
 			respond(s, interaction, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use this command.", true)
 			return
 		}
@@ -119,6 +123,12 @@ func main() {
 	session.AddHandler(func(s *discordgo.Session, message *discordgo.MessageCreate) {
 		logMessageEvent(message)
 		if message == nil || message.Author == nil || message.Author.Bot || message.GuildID != cfg.GuildID {
+			return
+		}
+		if strings.EqualFold(strings.TrimSpace(message.Content), ".help") {
+			if _, err := s.ChannelMessageSendEmbed(message.ChannelID, forumdiscord.HelpEmbed()); err != nil {
+				log.Printf("send prefix help embed: %v", err)
+			}
 			return
 		}
 		prefixCandidate := strings.HasPrefix(strings.TrimSpace(message.Content), ".")
@@ -294,6 +304,11 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager
 	}
 	data := i.ApplicationCommandData()
 	switch data.Name {
+	case "help":
+		embed := forumdiscord.HelpEmbed()
+		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Embeds: &[]*discordgo.MessageEmbed{embed}}); err != nil {
+			log.Printf("edit /help interaction response: %v", err)
+		}
 	case "forum-sync":
 		channelID := optionString(data.Options, "channel")
 		channel, err := manager.SyncChannel(channelID)

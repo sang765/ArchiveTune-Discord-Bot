@@ -30,6 +30,7 @@ The bot intentionally does not provide AI moderation, reaction management, histo
 
 | Command | Usage | Behavior |
 | --- | --- | --- |
+| `/help` | Available in any channel. | Shows the complete command list in an Embed. |
 | `/forum-sync channel:<Forum Channel>` | Run after changing `config.yaml`. | Synchronizes guidelines, tags, and the required-tag flag. |
 | `/fix-suggestion` | Moderator command. | Scans active and archived accessible suggestion posts and adds `Maybe` to posts with no applied tag. |
 | `/tag-add tag:<name>` | Run in a post, or provide `post_id`. | Adds a configured tag without replacing existing tags. |
@@ -39,7 +40,11 @@ The bot intentionally does not provide AI moderation, reaction management, histo
 
 ## Prefix commands
 
-Prefix commands are typed as normal messages. They require the **Message Content Intent** and moderator access.
+Prefix commands are typed as normal messages. They require the **Message Content Intent** and moderator access, except `.help`, which is available to all members.
+
+| Command | Behavior |
+| --- | --- |
+| `.help` | Shows the complete command list in an Embed. |
 
 ### Issue commands
 
@@ -60,7 +65,9 @@ Prefix commands are typed as normal messages. They require the **Message Content
 | `.reject <reason>` | Run directly inside the current suggestion post. | Replaces all existing tags with `Reject`, closes and locks the post, renames it to `[REJECTED] <old name>`, mentions the author, and sends the rejection reason. The reason is required and limited to 1,000 characters. |
 | `.tba` | Run directly inside a suggestion post. | Removes all existing tags and keeps only `TBA`. It does not close, lock, or rename the post. |
 | `.tbd` | Run directly inside a suggestion post. | Removes all existing tags and keeps only `TBD`. It does not close, lock, or rename the post. |
-| `.accept`, `.maybe` | Run directly inside a managed post. | Applies the configured status tag, locks the post, and adds the corresponding status prefix. |
+| `.accept` | Run directly inside a suggestion post. | Replaces all existing tags with `Accept`, closes and locks the post, and renames it to `[ACCEPTED] <old name>`. |
+| `.accepted` | Run directly inside a suggestion post. | Alias for `.accept`. |
+| `.maybe` | Run directly inside a managed post. | Applies the configured tag, locks the post, and adds the corresponding status prefix. |
 
 `.done`, `.in-progress`, `.exist`, `.reject`, `.tba`, and `.tbd` do not require a link. `.dupe` accepts either of the following forms:
 

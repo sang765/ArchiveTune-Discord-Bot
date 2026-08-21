@@ -30,6 +30,7 @@ Bot cố ý không cung cấp AI moderation, quản lý reaction, lưu lịch s�
 
 | Command | Cách dùng | Hành vi |
 | --- | --- | --- |
+| `/help` | Có thể dùng ở mọi channel. | Hiển thị toàn bộ danh sách command trong Embed. |
 | `/forum-sync channel:<Forum Channel>` | Chạy sau khi sửa `config.yaml`. | Đồng bộ guideline, tag và cờ bắt buộc tag. |
 | `/fix-suggestion` | Dành cho moderator. | Quét các suggestion post active và archived mà bot có quyền truy cập, sau đó gắn `Maybe` cho post chưa có tag. |
 | `/tag-add tag:<name>` | Chạy trong post hoặc truyền `post_id`. | Thêm tag đã cấu hình mà không xóa tag hiện tại. |
@@ -39,7 +40,11 @@ Bot cố ý không cung cấp AI moderation, quản lý reaction, lưu lịch s�
 
 ## Prefix command
 
-Prefix command được gửi như message thông thường. Bot cần **Message Content Intent** và người dùng cần quyền moderator.
+Prefix command được gửi như message thông thường. Bot cần **Message Content Intent** và người dùng cần quyền moderator, ngoại trừ `.help` có thể dùng bởi mọi thành viên.
+
+| Command | Hành vi |
+| --- | --- |
+| `.help` | Hiển thị toàn bộ danh sách command trong Embed. |
 
 ### Command cho issues
 
@@ -60,7 +65,9 @@ Prefix command được gửi như message thông thường. Bot cần **Message
 | `.reject <lý do>` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `Reject`, close và lock post, đổi tên thành `[REJECTED] <tên cũ>`, mention tác giả và gửi lý do. Lý do bắt buộc, tối đa 1.000 ký tự. |
 | `.tba` | Gửi trực tiếp trong suggestion post. | Xóa toàn bộ tag cũ và chỉ giữ `TBA`. Không close, lock hoặc đổi tên post. |
 | `.tbd` | Gửi trực tiếp trong suggestion post. | Xóa toàn bộ tag cũ và chỉ giữ `TBD`. Không close, lock hoặc đổi tên post. |
-| `.accept`, `.maybe` | Gửi trực tiếp trong post được quản lý. | Áp dụng tag status đã cấu hình, lock post và thêm prefix trạng thái tương ứng. |
+| `.accept` | Gửi trực tiếp trong suggestion post. | Thay toàn bộ tag bằng `Accept`, close và lock post, đổi tên thành `[ACCEPTED] <tên cũ>`. |
+| `.accepted` | Gửi trực tiếp trong suggestion post. | Alias của `.accept`. |
+| `.maybe` | Gửi trực tiếp trong post được quản lý. | Áp dụng tag đã cấu hình, lock post và thêm prefix trạng thái tương ứng. |
 
 `.done`, `.in-progress`, `.exist`, `.reject`, `.tba` và `.tbd` không cần link. Riêng `.dupe` hỗ trợ hai dạng link:
 
