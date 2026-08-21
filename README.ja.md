@@ -158,6 +158,8 @@ EXECUTABLE: run.sh
 
 source を自動更新するには、`.zip` archive を project root に upload して server を restart するだけです。`run.sh` は最新の ZIP を選択して検証・展開し、古い source を削除します。ただし `run.sh`、`config.yaml`、`.tools` は保持し、更新成功後に root の ZIP を削除します。壊れた archive や安全でない path を含む archive は拒否され、現在の source は削除されません。
 
+`.tools/go` には local Go toolchain が保存されます。Go module download と build cache は `.tools/go-work` に保存され、`.tools/.discord-forum-bot-build-fingerprint` が source の状態を記録します。source に変更がなければ、restart 時に既存の binary を再利用し、再 build や dependency の再 download は行いません。
+
 ## systemd
 
 Repository には `deploy/discord-forum-bot.service` が含まれています。Linux host でのインストール例:

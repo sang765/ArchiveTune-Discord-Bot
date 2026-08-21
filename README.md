@@ -158,6 +158,8 @@ This allows source edits made through the Pterodactyl File Manager to be picked 
 
 For a hands-off source update, upload a `.zip` archive to the project root and restart the server. `run.sh` selects the newest ZIP, validates and extracts it, removes the old source, preserves `run.sh`, `config.yaml`, and `.tools`, and deletes root ZIP files after a successful replacement. A malformed or unsafe archive is rejected without deleting the current source.
 
+The `.tools/go` directory contains the local Go toolchain. Go module downloads and compiler caches are stored under `.tools/go-work`, while `.tools/.discord-forum-bot-build-fingerprint` records the source state. When source files have not changed, restarts reuse the existing binary and do not rebuild or download dependencies again.
+
 ## systemd
 
 The repository includes `deploy/discord-forum-bot.service`. The following is an example installation on a Linux host:

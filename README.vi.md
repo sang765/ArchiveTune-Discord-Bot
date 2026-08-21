@@ -158,6 +158,8 @@ Nhờ vậy, mỗi lần bạn sửa source bằng File Manager rồi restart se
 
 Để cập nhật source tự động, chỉ cần upload một file `.zip` vào thư mục root rồi restart server. `run.sh` sẽ chọn ZIP mới nhất, kiểm tra và giải nén, xóa source cũ, giữ lại `run.sh`, `config.yaml` và `.tools`, sau đó xóa các file ZIP ở root khi thay thế thành công. Nếu archive bị lỗi hoặc chứa đường dẫn không an toàn, script sẽ từ chối và giữ nguyên source hiện tại.
 
+Thư mục `.tools/go` chứa Go toolchain local. Các module Go và build cache được lưu trong `.tools/go-work`, còn `.tools/.discord-forum-bot-build-fingerprint` ghi nhận trạng thái source. Khi source không thay đổi, các lần restart sau sẽ dùng lại binary hiện tại và không build hoặc tải dependency lại.
+
 ## systemd
 
 Repository có file `deploy/discord-forum-bot.service`. Ví dụ cài đặt trên Linux host:

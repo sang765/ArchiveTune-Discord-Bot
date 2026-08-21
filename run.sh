@@ -104,6 +104,27 @@ apply_zip_update
 CONFIG_FILE_PATH="${CONFIG_FILE:-./config.yaml}"
 BOT_BINARY="${BOT_BINARY:-./discord-forum-bot}"
 GO_PACKAGE_PATH="${GO_PACKAGE:-./cmd/bot}"
+GO_WORK_ROOT="${GO_WORK_ROOT:-.tools/go-work}"
+GO_MODULE_CACHE="${GO_WORK_ROOT}/pkg/mod"
+GO_BUILD_CACHE="${GO_WORK_ROOT}/build-cache"
+BUILD_FINGERPRINT_FILE=".tools/.discord-forum-bot-build-fingerprint"
+
+source_fingerprint() {
+  if ! command -v sha256sum >/dev/null 2>&1; then
+    printf '%s\n' "no-sha256sum"
+    return 0
+  fi
+  {
+    [[ -f go.mod ]] && sha256sum go.mod
+    [[ -f go.sum ]] && sha256sum go.sum
+    if [[ -d cmd ]]; then
+      find cmd -type f -print0 | sort -z | while IFS= read -r -d '' file; do sha256sum "$file"; done
+    fi
+    if [[ -d internal ]]; then
+      find internal -type f -print0 | sort -z | while IFS= read -r -d '' file; do sha256sum "$file"; done
+    fi
+  } | sha256sum | awk '{print $1}'
+}
 
 GO_BIN=""
 if command -v go >/dev/null 2>&1; then
@@ -116,14 +137,26 @@ elif [[ -x ./install-go.sh ]]; then
 fi
 
 if [[ -n "${GO_BIN}" && -f go.mod ]]; then
-  log "Building ${BOT_BINARY} from ${GO_PACKAGE_PATH} with ${GO_BIN}..."
-  GOTOOLCHAIN=local CGO_ENABLED=0 "${GO_BIN}" build \
-    -trimpath \
-    -ldflags='-s -w' \
-    -o "${BOT_BINARY}.tmp" \
-    "${GO_PACKAGE_PATH}"
-  mv -f "${BOT_BINARY}.tmp" "${BOT_BINARY}"
-  chmod 755 "${BOT_BINARY}" 2>/dev/null || true
+  mkdir -p "${GO_MODULE_CACHE}" "${GO_BUILD_CACHE}"
+  current_fingerprint="$(source_fingerprint)"
+  previous_fingerprint=""
+  [[ -f "${BUILD_FINGERPRINT_FILE}" ]] && previous_fingerprint="$(cat "${BUILD_FINGERPRINT_FILE}")"
+
+  if [[ -x "${BOT_BINARY}" && "$current_fingerprint" == "$previous_fingerprint" ]]; then
+    log "Source unchanged; reusing existing binary ${BOT_BINARY}."
+  else
+    log "Building ${BOT_BINARY} from ${GO_PACKAGE_PATH} with ${GO_BIN}..."
+    GOPATH="${GO_WORK_ROOT}" GOMODCACHE="${GO_MODULE_CACHE}" GOCACHE="${GO_BUILD_CACHE}" \
+      GOTOOLCHAIN=local CGO_ENABLED=0 "${GO_BIN}" build \
+      -trimpath \
+      -ldflags='-s -w' \
+      -o "${BOT_BINARY}.tmp" \
+      "${GO_PACKAGE_PATH}"
+    mv -f "${BOT_BINARY}.tmp" "${BOT_BINARY}"
+    chmod 755 "${BOT_BINARY}" 2>/dev/null || true
+    printf '%s\n' "$current_fingerprint" > "${BUILD_FINGERPRINT_FILE}"
+    log "Build completed and dependency/build caches were stored under ${GO_WORK_ROOT}."
+  fi
 else
   log "Go compiler unavailable; using the existing binary ${BOT_BINARY}."
 fi
