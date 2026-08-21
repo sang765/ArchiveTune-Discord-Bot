@@ -40,7 +40,7 @@ Discord では Forum の各投稿は thread として扱われます。利用可
 
 ## Prefix command
 
-Prefix command は通常の message として送信します。利用には **Message Content Intent** と moderator 権限が必要です。ただし `.help` はすべての member が使用できます。
+Prefix command は通常の message として送信します。利用には **Message Content Intent** と moderator 権限が必要です。ただし `.help` はすべての member が使用できます。成功、エラー、usage、権限通知を含むすべての command response は、ArchiveTune Bot ブランドの Embed で送信されます。
 
 | Command | 動作 |
 | --- | --- |

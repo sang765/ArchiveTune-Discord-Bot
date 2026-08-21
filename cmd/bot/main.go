@@ -134,11 +134,11 @@ func main() {
 		prefixCandidate := strings.HasPrefix(strings.TrimSpace(message.Content), ".")
 		if reason, matched, valid := forumdiscord.ParseRejectCommand(message.Content); matched {
 			if !valid {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Usage: `.reject <reason>` — the reason is required and must be at most 1,000 characters.")
+				sendInfoMessage(s, message.ChannelID, "Usage", "`.reject <reason>` — the reason is required and must be at most 1,000 characters.")
 				return
 			}
 			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use `.reject`.")
+				sendErrorMessage(s, message.ChannelID, "Permission denied", "You need `Manage Threads`, `Administrator`, or a configured moderator role to use `.reject`.")
 				return
 			}
 			statusAction := forumdiscord.SuggestionStatusAction{Command: ".reject", TagName: "Reject", TitlePrefix: "[REJECTED]"}
@@ -148,28 +148,28 @@ func main() {
 			}
 			updated, err := manager.ApplySuggestionStatusAction(message.ChannelID, statusAction)
 			if err != nil {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Could not process `.reject`: "+err.Error())
+				sendErrorMessage(s, message.ChannelID, "Command failed", "Could not process `.reject`: "+err.Error())
 				return
 			}
 			messageText := fmt.Sprintf("Rejected the suggestion: replaced its tags with `Reject`, closed and locked the post, and renamed it to **%s**. Reason: %s", updated.Name, reason)
 			if authorMention != "" {
 				messageText = authorMention + " " + messageText
 			}
-			_, _ = s.ChannelMessageSend(message.ChannelID, messageText)
+			sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
 			return
 		}
 
 		if statusAction, link, matched, valid := forumdiscord.ParseSuggestionStatusCommand(message.Content); matched {
 			if !valid {
 				if statusAction.Command == ".dupe" {
-					_, _ = s.ChannelMessageSend(message.ChannelID, "Usage: `.dupe <Discord post link or message link>`")
+					sendInfoMessage(s, message.ChannelID, "Usage", "`.dupe <Discord post link or message link>`")
 				} else {
-					_, _ = s.ChannelMessageSend(message.ChannelID, fmt.Sprintf("Usage: `%s` — send this command directly in the post you want to process.", statusAction.Command))
+					sendInfoMessage(s, message.ChannelID, "Usage", fmt.Sprintf("`%s` — send this command directly in the post you want to process.", statusAction.Command))
 				}
 				return
 			}
 			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use suggestion status commands.")
+				sendErrorMessage(s, message.ChannelID, "Permission denied", "You need `Manage Threads`, `Administrator`, or a configured moderator role to use suggestion status commands.")
 				return
 			}
 			targetID := message.ChannelID
@@ -177,7 +177,7 @@ func main() {
 				var err error
 				targetID, err = forumdiscord.ParseDiscordPostLink(link, cfg.GuildID)
 				if err != nil {
-					_, _ = s.ChannelMessageSend(message.ChannelID, "Could not parse post link: "+err.Error())
+					sendErrorMessage(s, message.ChannelID, "Invalid post link", "Could not parse post link: "+err.Error())
 					return
 				}
 			}
@@ -187,14 +187,14 @@ func main() {
 			}
 			updated, err := manager.ApplySuggestionStatusAction(targetID, statusAction)
 			if err != nil {
-				_, _ = s.ChannelMessageSend(message.ChannelID, "Could not process "+statusAction.Command+": "+err.Error())
+				sendErrorMessage(s, message.ChannelID, "Command failed", "Could not process "+statusAction.Command+": "+err.Error())
 				return
 			}
 			messageText := fmt.Sprintf("Applied `%s`: replaced all tags with `%s`, closed and locked the post, and renamed it to **%s**.", statusAction.Command, statusAction.TagName, updated.Name)
 			if authorMention != "" {
 				messageText = authorMention + " " + messageText
 			}
-			_, _ = s.ChannelMessageSend(message.ChannelID, messageText)
+			sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
 			return
 		}
 
@@ -217,7 +217,7 @@ func main() {
 		log.Printf("prefix command recognized: guild_id=%s channel_id=%s command=%s", message.GuildID, message.ChannelID, action.Command)
 		if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
 			log.Printf("prefix command denied: channel_id=%s command=%s member_permissions=%d roles=%v", message.ChannelID, action.Command, memberPermissions(message), memberRoleIDs(message))
-			_, _ = s.ChannelMessageSend(message.ChannelID, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use prefix commands.")
+			sendErrorMessage(s, message.ChannelID, "Permission denied", "You need `Manage Threads`, `Administrator`, or a configured moderator role to use prefix commands.")
 			return
 		}
 		authorMention := ""
@@ -232,7 +232,7 @@ func main() {
 		updated, err := manager.ApplyPrefixAction(message.ChannelID, action)
 		if err != nil {
 			log.Printf("prefix command failed: channel_id=%s command=%s error=%v", message.ChannelID, action.Command, err)
-			_, _ = s.ChannelMessageSend(message.ChannelID, "Could not process "+action.Command+": "+err.Error())
+			sendErrorMessage(s, message.ChannelID, "Command failed", "Could not process "+action.Command+": "+err.Error())
 			return
 		}
 		messageText := fmt.Sprintf("Applied `%s`: set tag `%s`, locked the post, and renamed it to **%s**.", action.Command, action.TagName, updated.Name)
@@ -245,7 +245,7 @@ func main() {
 		if originalCommand != "" {
 			messageText = fmt.Sprintf("I corrected `%s` to `%s`. %s", originalCommand, action.Command, messageText)
 		}
-		_, _ = s.ChannelMessageSend(message.ChannelID, messageText)
+		sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
 		log.Printf("prefix command completed: channel_id=%s command=%s post_name=%q", message.ChannelID, action.Command, updated.Name)
 	})
 
@@ -321,11 +321,10 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager
 		scanned, fixed, err := manager.FixSuggestion()
 		content := fmt.Sprintf("Scanned %d suggestion posts and applied the `Maybe` tag to %d posts that had no tags.", scanned, fixed)
 		if err != nil {
-			content = "Could not fix suggestion posts: " + err.Error()
+			editInteraction(s, i, "Could not fix suggestion posts: "+err.Error(), true)
+			return
 		}
-		if _, editErr := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: &content}); editErr != nil {
-			log.Printf("edit /fix-suggestion interaction response: %v", editErr)
-		}
+		editInteraction(s, i, content, false)
 	case "tag-add":
 		postID := postIDFrom(i, data.Options)
 		updated, err := manager.ApplyTag(postID, optionString(data.Options, "tag"))
@@ -391,8 +390,12 @@ func deferInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) erro
 	})
 }
 
-func editInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, content string, _ bool) {
-	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: &content}); err != nil {
+func editInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, content string, isError bool) {
+	embed := forumdiscord.SuccessEmbed("Command completed", content)
+	if isError {
+		embed = forumdiscord.ErrorEmbed("Command failed", content)
+	}
+	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Embeds: &[]*discordgo.MessageEmbed{embed}}); err != nil {
 		log.Printf("edit slash command response: %v", err)
 	}
 }
@@ -402,10 +405,29 @@ func respond(s *discordgo.Session, i *discordgo.InteractionCreate, content strin
 	if ephemeral {
 		flags = discordgo.MessageFlagsEphemeral
 	}
+	embed := forumdiscord.ErrorEmbed("Permission denied", content)
 	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{Content: content, Flags: flags},
+		Data: &discordgo.InteractionResponseData{Embeds: []*discordgo.MessageEmbed{embed}, Flags: flags},
 	}); err != nil {
 		log.Printf("interaction response: %v", err)
+	}
+}
+
+func sendInfoMessage(s *discordgo.Session, channelID, title, description string) {
+	if _, err := s.ChannelMessageSendEmbed(channelID, forumdiscord.InfoEmbed(title, description)); err != nil {
+		log.Printf("send info embed: %v", err)
+	}
+}
+
+func sendSuccessMessage(s *discordgo.Session, channelID, title, description string) {
+	if _, err := s.ChannelMessageSendEmbed(channelID, forumdiscord.SuccessEmbed(title, description)); err != nil {
+		log.Printf("send success embed: %v", err)
+	}
+}
+
+func sendErrorMessage(s *discordgo.Session, channelID, title, description string) {
+	if _, err := s.ChannelMessageSendEmbed(channelID, forumdiscord.ErrorEmbed(title, description)); err != nil {
+		log.Printf("send error embed: %v", err)
 	}
 }

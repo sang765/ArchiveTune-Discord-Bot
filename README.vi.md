@@ -40,7 +40,7 @@ Bot cố ý không cung cấp AI moderation, quản lý reaction, lưu lịch s�
 
 ## Prefix command
 
-Prefix command được gửi như message thông thường. Bot cần **Message Content Intent** và người dùng cần quyền moderator, ngoại trừ `.help` có thể dùng bởi mọi thành viên.
+Prefix command được gửi như message thông thường. Bot cần **Message Content Intent** và người dùng cần quyền moderator, ngoại trừ `.help` có thể dùng bởi mọi thành viên. Tất cả phản hồi command, gồm thành công, lỗi, usage và thông báo quyền, đều được gửi dưới dạng Embed thương hiệu ArchiveTune Bot.
 
 | Command | Hành vi |
 | --- | --- |

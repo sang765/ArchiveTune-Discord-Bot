@@ -40,7 +40,7 @@ The bot intentionally does not provide AI moderation, reaction management, histo
 
 ## Prefix commands
 
-Prefix commands are typed as normal messages. They require the **Message Content Intent** and moderator access, except `.help`, which is available to all members.
+Prefix commands are typed as normal messages. They require the **Message Content Intent** and moderator access, except `.help`, which is available to all members. All command responses, including success, error, usage, and permission messages, are sent as branded ArchiveTune Bot Embeds.
 
 | Command | Behavior |
 | --- | --- |
