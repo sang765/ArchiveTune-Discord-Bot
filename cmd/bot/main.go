@@ -253,12 +253,18 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager
 		}
 		respond(s, i, fmt.Sprintf("Đã đồng bộ Forum Channel %s với %d tag.", channel.Mention(), len(channel.AvailableTags)), false)
 	case "fix-suggestion":
-		scanned, fixed, err := manager.FixSuggestion()
-		if err != nil {
-			respond(s, i, err.Error(), true)
+		if err := deferInteraction(s, i); err != nil {
+			log.Printf("defer /fix-suggestion interaction: %v", err)
 			return
 		}
-		respond(s, i, fmt.Sprintf("Đã quét %d suggestion post và gắn tag `Maybe` cho %d post chưa có tag.", scanned, fixed), false)
+		scanned, fixed, err := manager.FixSuggestion()
+		content := fmt.Sprintf("Đã quét %d suggestion post và gắn tag `Maybe` cho %d post chưa có tag.", scanned, fixed)
+		if err != nil {
+			content = "Không thể sửa suggestion post: " + err.Error()
+		}
+		if _, editErr := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Content: &content}); editErr != nil {
+			log.Printf("edit /fix-suggestion interaction response: %v", editErr)
+		}
 	case "tag-add":
 		postID := postIDFrom(i, data.Options)
 		updated, err := manager.ApplyTag(postID, optionString(data.Options, "tag"))
@@ -313,6 +319,12 @@ func postIDFrom(i *discordgo.InteractionCreate, options []*discordgo.Application
 		return postID
 	}
 	return i.ChannelID
+}
+
+func deferInteraction(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+	})
 }
 
 func respond(s *discordgo.Session, i *discordgo.InteractionCreate, content string, ephemeral bool) {
