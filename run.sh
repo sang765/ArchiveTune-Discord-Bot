@@ -101,13 +101,17 @@ apply_zip_update() {
 
 apply_zip_update
 
-CONFIG_FILE_PATH="${CONFIG_FILE:-./config.yaml}"
+PROJECT_ROOT="$(pwd -P)"
+CONFIG_FILE_PATH="${CONFIG_FILE:-${PROJECT_ROOT}/config.yaml}"
 BOT_BINARY="${BOT_BINARY:-./discord-forum-bot}"
 GO_PACKAGE_PATH="${GO_PACKAGE:-./cmd/bot}"
-GO_WORK_ROOT="${GO_WORK_ROOT:-.tools/go-work}"
+GO_WORK_ROOT="${GO_WORK_ROOT:-${PROJECT_ROOT}/.tools/go-work}"
+if [[ "${GO_WORK_ROOT}" != /* ]]; then
+  GO_WORK_ROOT="${PROJECT_ROOT}/${GO_WORK_ROOT#./}"
+fi
 GO_MODULE_CACHE="${GO_WORK_ROOT}/pkg/mod"
 GO_BUILD_CACHE="${GO_WORK_ROOT}/build-cache"
-BUILD_FINGERPRINT_FILE=".tools/.discord-forum-bot-build-fingerprint"
+BUILD_FINGERPRINT_FILE="${PROJECT_ROOT}/.tools/.discord-forum-bot-build-fingerprint"
 
 source_fingerprint() {
   if ! command -v sha256sum >/dev/null 2>&1; then
@@ -155,7 +159,7 @@ if [[ -n "${GO_BIN}" && -f go.mod ]]; then
     mv -f "${BOT_BINARY}.tmp" "${BOT_BINARY}"
     chmod 755 "${BOT_BINARY}" 2>/dev/null || true
     printf '%s\n' "$current_fingerprint" > "${BUILD_FINGERPRINT_FILE}"
-    log "Build completed and dependency/build caches were stored under ${GO_WORK_ROOT}."
+    log "Build completed; dependency and build caches are stored under ${GO_WORK_ROOT}."
   fi
 else
   log "Go compiler unavailable; using the existing binary ${BOT_BINARY}."
