@@ -77,20 +77,47 @@ apply_zip_update() {
     return 0
   fi
 
-  # Always preserve the live configuration and the cached local Go toolchain.
+  # Always preserve the live configuration and all known caches.
   rm -f -- "$source_root/config.yaml"
   rm -rf -- "$source_root/.tools"
+  chmod -R u+rwX "$source_root" 2>/dev/null || true
 
-  log "Replacing source files while preserving run.sh, config.yaml, and .tools..."
-  find . -mindepth 1 -maxdepth 1 \
-    ! -name 'run.sh' \
-    ! -name 'config.yaml' \
-    ! -name '.tools' \
-    -exec rm -rf -- {} +
-  cp -a "$source_root"/. .
+  # Snapshot the old root before the overlay. This allows stale-file cleanup only after
+  # the new source is safely present, so a protected cache cannot abort the update.
+  local entry base
+  local old_entries=()
+  shopt -s nullglob dotglob
+  old_entries=(./* ./.??*)
+  shopt -u dotglob nullglob
 
-  # Remove every root ZIP after a successful replacement.
-  find . -maxdepth 1 -type f -iname '*.zip' -delete
+  log "Overlaying source while preserving config.yaml and caches..."
+  if ! cp -a "$source_root"/. .; then
+    log "ZIP overlay failed; keeping the current source unchanged where possible."
+    rm -rf -- "$stage"
+    return 0
+  fi
+
+  # Remove stale entries that were present before the overlay but are absent from the ZIP.
+  # Live config, run.sh, and all known caches are always preserved.
+  for entry in "${old_entries[@]}"; do
+    [[ -e "$entry" ]] || continue
+    base="$(basename "$entry")"
+    case "$base" in
+      .|..|run.sh|config.yaml|.tools|go|.cache)
+        continue
+        ;;
+    esac
+    [[ -e "$source_root/$base" ]] && continue
+    if ! rm -rf -- "$entry"; then
+      log "Warning: could not remove stale entry ${entry}; continuing with the updated source."
+    fi
+  done
+
+  # Remove every root ZIP after a successful overlay when permissions allow it.
+  for entry in ./*.zip; do
+    [[ -e "$entry" ]] || continue
+    rm -f -- "$entry" 2>/dev/null || log "Warning: could not remove ${entry}."
+  done
   chmod 755 run.sh 2>/dev/null || true
   [[ -f install-go.sh ]] && chmod 755 install-go.sh 2>/dev/null || true
   [[ -f discord-forum-bot ]] && chmod 755 discord-forum-bot 2>/dev/null || true
