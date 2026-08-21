@@ -7,9 +7,19 @@ CONFIG_FILE_PATH="${CONFIG_FILE:-./config.yaml}"
 BOT_BINARY="${BOT_BINARY:-./discord-forum-bot}"
 GO_PACKAGE_PATH="${GO_PACKAGE:-./cmd/bot}"
 
-if command -v go >/dev/null 2>&1 && [[ -f go.mod ]]; then
-  echo "[startup] Go detected; building ${BOT_BINARY} from ${GO_PACKAGE_PATH}..."
-  GOTOOLCHAIN=local CGO_ENABLED=0 go build \
+GO_BIN=""
+if command -v go >/dev/null 2>&1; then
+  GO_BIN="$(command -v go)"
+elif [[ -x .tools/go/bin/go ]]; then
+  GO_BIN=".tools/go/bin/go"
+elif [[ -x ./install-go.sh ]]; then
+  echo "[startup] Go compiler not found; installing a local Go toolchain..."
+  GO_BIN="$(./install-go.sh)"
+fi
+
+if [[ -n "${GO_BIN}" && -f go.mod ]]; then
+  echo "[startup] Building ${BOT_BINARY} from ${GO_PACKAGE_PATH} with ${GO_BIN}..."
+  GOTOOLCHAIN=local CGO_ENABLED=0 "${GO_BIN}" build \
     -trimpath \
     -ldflags='-s -w' \
     -o "${BOT_BINARY}.tmp" \
@@ -17,7 +27,7 @@ if command -v go >/dev/null 2>&1 && [[ -f go.mod ]]; then
   mv -f "${BOT_BINARY}.tmp" "${BOT_BINARY}"
   chmod 755 "${BOT_BINARY}" 2>/dev/null || true
 else
-  echo "[startup] Go compiler not found; using the existing binary ${BOT_BINARY}."
+  echo "[startup] Go compiler unavailable; using the existing binary ${BOT_BINARY}."
 fi
 
 if [[ ! -f "${BOT_BINARY}" ]]; then

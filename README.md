@@ -146,7 +146,7 @@ docker run --rm \
 
 ## Pterodactyl startup script
 
-The repository includes `run.sh`. Set the Pterodactyl startup command to `./${EXECUTABLE}`, set `EXECUTABLE` to `run.sh`, and set `GO_PACKAGE` to `./cmd/bot`. The script changes to the project directory, builds a fresh Linux binary when Go is available, and then starts it with `CONFIG_FILE=./config.yaml`. If Go is unavailable, it falls back to an existing executable `./discord-forum-bot`.
+The repository includes `run.sh` and `install-go.sh`. Set the Pterodactyl startup command to `./${EXECUTABLE}`, set `EXECUTABLE` to `run.sh`, and set `GO_PACKAGE` to `./cmd/bot`. The script changes to the project directory, uses the container Go compiler when available, or downloads a user-local Go 1.22.2 toolchain through `install-go.sh` when Go is missing. It then builds a fresh Linux binary and starts it with `CONFIG_FILE=./config.yaml`. If installation is unavailable, it falls back to an existing executable `./discord-forum-bot`.
 
 ```text
 Startup Command: ./\${EXECUTABLE}
@@ -154,7 +154,7 @@ GO PACKAGE: ./cmd/bot
 EXECUTABLE: run.sh
 ```
 
-This allows source edits made through the Pterodactyl File Manager to be picked up on the next restart without manually running `go build`. The container still needs Go 1.22+ for automatic rebuilding; otherwise upload a prebuilt executable named `discord-forum-bot`.
+This allows source edits made through the Pterodactyl File Manager to be picked up on the next restart without manually running `go build`. The first start needs outbound HTTPS access to `go.dev` and enough disk space to store the user-local toolchain under `.tools/go`; later starts reuse it. If the container has no network access, upload a prebuilt executable named `discord-forum-bot` instead.
 
 ## systemd
 

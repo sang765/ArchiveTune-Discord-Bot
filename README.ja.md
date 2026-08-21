@@ -146,7 +146,7 @@ docker run --rm \
 
 ## Pterodactyl startup script
 
-Repository には `run.sh` が含まれています。Pterodactyl の startup command を `./${EXECUTABLE}`、`EXECUTABLE` を `run.sh`、`GO PACKAGE` を `./cmd/bot` に設定してください。script は project directory に移動し、container に Go があれば新しい Linux binary を build してから `CONFIG_FILE=./config.yaml` で bot を起動します。Go がない場合は、既存の executable `./discord-forum-bot` を使用します。
+Repository には `run.sh` と `install-go.sh` が含まれています。Pterodactyl の startup command を `./${EXECUTABLE}`、`EXECUTABLE` を `run.sh`、`GO PACKAGE` を `./cmd/bot` に設定してください。script は project directory に移動し、container に Go があればそれを使用し、Go がなければ `install-go.sh` で user-local の Go 1.22.2 toolchain をダウンロードします。その後 Linux binary を build し、`CONFIG_FILE=./config.yaml` で bot を起動します。導入できない場合は既存の executable `./discord-forum-bot` を使用します。
 
 ```text
 Startup Command: ./\${EXECUTABLE}
@@ -154,7 +154,7 @@ GO PACKAGE: ./cmd/bot
 EXECUTABLE: run.sh
 ```
 
-これにより、Pterodactyl File Manager で source を編集した後、server を restart するだけで自動的に再 build できます。自動 build には Go 1.22 以降が必要です。Go がない場合は、事前に build した `discord-forum-bot` binary を upload してください。
+これにより、Pterodactyl File Manager で source を編集した後、server を restart するだけで自動的に再 build できます。初回起動には `go.dev` への HTTPS outbound access と、`.tools/go` に toolchain を保存するための空き容量が必要です。以降はダウンロード済みの toolchain を再利用します。container に network access がない場合は、事前に build した `discord-forum-bot` binary を upload してください。
 
 ## systemd
 
