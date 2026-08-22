@@ -104,6 +104,20 @@ prefix_max_distance: 2
 
 `replace_existing_tags: false` preserves tags that already exist in Discord and updates or appends declared tags. Set it to `true` only when the configured list should become the complete list of available tags for a channel.
 
+### Tag emoji configuration
+
+The `emoji` field accepts normal Unicode emoji and Discord custom emoji markup. Static custom emoji use `<:name:id>`, while animated custom emoji use `<a:name:id>`:
+
+```yaml
+- name: "ArchiveTune Version"
+  emoji: "<:02V:1520005999040266240>"
+
+- name: "Animated Status"
+  emoji: "<a:loading:1520005999040266240>"
+```
+
+The parser also accepts the explicit form `emoji`, `emoji_id`, and `emoji_animated`. When a custom emoji markup value is used, the bot automatically extracts the name and ID and sends them as Discord's `emoji_name` and `emoji_id` Forum Tag fields. Do not paste a custom emoji markup value into a Unicode-only field or use `emoji_animated: true` for a static emoji.
+
 ## Create the Discord application
 
 Create an Application and Bot User in the [Discord Developer Portal](https://discord.com/developers/applications). Invite the bot with the `bot` and `applications.commands` scopes.

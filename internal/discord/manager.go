@@ -43,7 +43,10 @@ func (m *Manager) SyncChannel(channelID string) (*discordgo.Channel, error) {
 		return nil, fmt.Errorf("channel %s is type %d, expected forum", channelID, current.Type)
 	}
 
-	tags := mergeTags(current.AvailableTags, cfg.Tags, m.config.ReplaceExistingTags)
+	tags, err := mergeTags(current.AvailableTags, cfg.Tags, m.config.ReplaceExistingTags)
+	if err != nil {
+		return nil, fmt.Errorf("prepare forum tags: %w", err)
+	}
 	flags := current.Flags
 	if cfg.RequireTag {
 		flags |= requireTagFlag
@@ -63,7 +66,7 @@ func (m *Manager) SyncChannel(channelID string) (*discordgo.Channel, error) {
 	return updated, nil
 }
 
-func mergeTags(existing []discordgo.ForumTag, declared []config.TagConfig, replace bool) []discordgo.ForumTag {
+func mergeTags(existing []discordgo.ForumTag, declared []config.TagConfig, replace bool) ([]discordgo.ForumTag, error) {
 	result := make([]discordgo.ForumTag, 0, len(existing)+len(declared))
 	byName := make(map[string]int, len(existing)+len(declared))
 	for _, tag := range existing {
@@ -82,7 +85,11 @@ func mergeTags(existing []discordgo.ForumTag, declared []config.TagConfig, repla
 	for _, declaredTag := range declared {
 		name := strings.TrimSpace(declaredTag.Name)
 		key := strings.ToLower(name)
-		newTag := discordgo.ForumTag{Name: name, EmojiName: declaredTag.Emoji}
+		emojiName, emojiID, _, err := declaredTag.DiscordEmoji()
+		if err != nil {
+			return nil, err
+		}
+		newTag := discordgo.ForumTag{Name: name, EmojiName: emojiName, EmojiID: emojiID}
 		if index, ok := byName[key]; ok {
 			newTag.ID = result[index].ID
 			newTag.Moderated = result[index].Moderated
@@ -92,7 +99,7 @@ func mergeTags(existing []discordgo.ForumTag, declared []config.TagConfig, repla
 		byName[key] = len(result)
 		result = append(result, newTag)
 	}
-	return result
+	return result, nil
 }
 
 func (m *Manager) ManagedThread(threadID string) (*discordgo.Channel, config.ChannelConfig, error) {

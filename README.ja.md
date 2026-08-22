@@ -104,6 +104,20 @@ prefix_max_distance: 2
 
 `replace_existing_tags: false` は Discord にすでに存在するタグを保持し、設定済みタグを更新または追加します。設定ファイルのリストを channel の完全なタグ一覧にしたい場合にのみ `true` にしてください。
 
+### タグの emoji 設定
+
+`emoji` フィールドは通常の Unicode emoji と Discord custom emoji の形式に対応します。静的な custom emoji は `<:name:id>`、アニメーションする custom emoji は `<a:name:id>` を使用します。
+
+```yaml
+- name: "ArchiveTune Version"
+  emoji: "<:02V:1520005999040266240>"
+
+- name: "Animated Status"
+  emoji: "<a:loading:1520005999040266240>"
+```
+
+`emoji`、`emoji_id`、`emoji_animated` を分けて指定する形式も使用できます。custom emoji の形式を指定すると、bot が名前と ID を自動的に分離し、Discord Forum Tag の `emoji_name` と `emoji_id` に送信します。Unicode emoji に custom emoji の markup を使用したり、静的 emoji に `emoji_animated: true` を設定したりしないでください。
+
 ## Discord Application の作成
 
 [Discord Developer Portal](https://discord.com/developers/applications) で Application と Bot User を作成します。`bot` と `applications.commands` scope を付けて bot を server に invite してください。

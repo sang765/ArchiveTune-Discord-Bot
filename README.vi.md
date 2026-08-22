@@ -104,6 +104,20 @@ prefix_max_distance: 2
 
 `replace_existing_tags: false` giữ lại các tag đã tồn tại trong Discord và cập nhật hoặc bổ sung các tag được khai báo. Chỉ đặt `true` khi danh sách trong config phải trở thành toàn bộ danh sách tag khả dụng của channel.
 
+### Cấu hình emoji cho tag
+
+Trường `emoji` hỗ trợ emoji Unicode thông thường và cú pháp custom emoji của Discord. Custom emoji tĩnh dùng `<:name:id>`, còn custom emoji động dùng `<a:name:id>`:
+
+```yaml
+- name: "ArchiveTune Version"
+  emoji: "<:02V:1520005999040266240>"
+
+- name: "Animated Status"
+  emoji: "<a:loading:1520005999040266240>"
+```
+
+Bạn cũng có thể dùng dạng tách riêng `emoji`, `emoji_id` và `emoji_animated`. Khi dùng cú pháp custom emoji, bot tự tách tên và ID rồi gửi vào hai field `emoji_name` và `emoji_id` của Discord Forum Tag. Không dùng markup custom emoji cho emoji Unicode và không đặt `emoji_animated: true` với emoji tĩnh.
+
 ## Tạo Discord Application
 
 Tạo Application và Bot User trong [Discord Developer Portal](https://discord.com/developers/applications). Invite bot với scope `bot` và `applications.commands`.

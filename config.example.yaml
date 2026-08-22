@@ -29,8 +29,12 @@ channels:
         emoji: "❗"
       - name: "Question"
         emoji: "❓"
+      # Unicode emoji example:
       - name: "Stable Version"
         emoji: "🧊"
+      # Custom emoji example: <:name:id> or <a:name:id>
+      - name: "ArchiveTune Version"
+        emoji: "<:02V:1520005999040266240>"
       - name: "Nightly Version"
         emoji: "🌙"
       - name: "False report"

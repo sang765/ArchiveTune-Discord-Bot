@@ -14,7 +14,10 @@ func TestMergeTagsPreservesIDsAndUpdatesDeclaredTags(t *testing.T) {
 	}
 	declared := []config.TagConfig{{Name: "Problem", Emoji: "❗"}, {Name: "Question", Emoji: "❓"}}
 
-	got := mergeTags(existing, declared, false)
+	got, err := mergeTags(existing, declared, false)
+	if err != nil {
+		t.Fatalf("merge tags: %v", err)
+	}
 	if len(got) != 3 {
 		t.Fatalf("expected 3 tags, got %d", len(got))
 	}
@@ -27,8 +30,24 @@ func TestMergeTagsPreservesIDsAndUpdatesDeclaredTags(t *testing.T) {
 }
 
 func TestMergeTagsCanReplaceExistingTags(t *testing.T) {
-	got := mergeTags([]discordgo.ForumTag{{ID: "1", Name: "Legacy"}}, []config.TagConfig{{Name: "Problem"}}, true)
+	got, err := mergeTags([]discordgo.ForumTag{{ID: "1", Name: "Legacy"}}, []config.TagConfig{{Name: "Problem"}}, true)
+	if err != nil {
+		t.Fatalf("merge tags: %v", err)
+	}
 	if len(got) != 1 || got[0].Name != "Problem" {
 		t.Fatalf("expected only declared tag, got %#v", got)
+	}
+}
+
+func TestMergeTagsUsesCustomEmojiID(t *testing.T) {
+	got, err := mergeTags(nil, []config.TagConfig{{Name: "Version", Emoji: "<:02V:1520005999040266240>"}}, false)
+	if err != nil {
+		t.Fatalf("merge custom emoji tag: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected one tag, got %d", len(got))
+	}
+	if got[0].EmojiID != "1520005999040266240" || got[0].EmojiName != "02V" {
+		t.Fatalf("unexpected custom emoji fields: %#v", got[0])
 	}
 }

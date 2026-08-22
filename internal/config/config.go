@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -28,8 +29,53 @@ type ChannelConfig struct {
 }
 
 type TagConfig struct {
-	Name  string `yaml:"name"`
-	Emoji string `yaml:"emoji"`
+	Name          string `yaml:"name"`
+	Emoji         string `yaml:"emoji"`
+	EmojiID       string `yaml:"emoji_id"`
+	EmojiAnimated bool   `yaml:"emoji_animated"`
+}
+
+var customEmojiPattern = regexp.MustCompile(`^<(a?):([A-Za-z0-9_~]+):([0-9]{18,20})>$`)
+
+// DiscordEmoji returns the ForumTag emoji fields. The emoji field accepts a
+// Unicode emoji or a Discord custom emoji formatted as <:name:id> / <a:name:id>.
+func (t TagConfig) DiscordEmoji() (emojiName, emojiID string, animated bool, err error) {
+	raw := strings.TrimSpace(t.Emoji)
+	if match := customEmojiPattern.FindStringSubmatch(raw); match != nil {
+		parsedAnimated := match[1] == "a"
+		if t.EmojiID != "" && t.EmojiID != match[3] {
+			return "", "", false, fmt.Errorf("tag %q has conflicting custom emoji ids", t.Name)
+		}
+		if t.EmojiAnimated && !parsedAnimated {
+			return "", "", false, fmt.Errorf("tag %q marks a static custom emoji as animated", t.Name)
+		}
+		return match[2], match[3], parsedAnimated, nil
+	}
+	if strings.HasPrefix(raw, "<") || strings.Contains(raw, ":") && strings.HasSuffix(raw, ">") {
+		return "", "", false, fmt.Errorf("tag %q has an invalid custom emoji; use <:name:id> or <a:name:id>", t.Name)
+	}
+	if t.EmojiID != "" {
+		if !isEmojiID(t.EmojiID) {
+			return "", "", false, fmt.Errorf("tag %q has an invalid emoji_id", t.Name)
+		}
+		return raw, t.EmojiID, t.EmojiAnimated, nil
+	}
+	if t.EmojiAnimated {
+		return "", "", false, fmt.Errorf("tag %q sets emoji_animated without emoji_id or a custom emoji value", t.Name)
+	}
+	return raw, "", false, nil
+}
+
+func isEmojiID(value string) bool {
+	if len(value) < 18 || len(value) > 20 {
+		return false
+	}
+	for _, character := range value {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func Load(path string) (*Config, error) {
@@ -86,6 +132,9 @@ func (c *Config) Validate() error {
 			key := strings.ToLower(name)
 			if _, ok := seenTags[key]; ok {
 				return fmt.Errorf("channel %q contains duplicate tag %q", channel.Name, name)
+			}
+			if _, _, _, err := tag.DiscordEmoji(); err != nil {
+				return err
 			}
 			seenTags[key] = struct{}{}
 		}
