@@ -152,7 +152,7 @@ func main() {
 				return
 			}
 			messageText := fmt.Sprintf("The post was tagged `Reject`, closed and locked, and renamed to **%s**. Reason: %s", updated.Name, reason)
-			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, statusAction.Command, messageText)
+			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, statusAction.Command, updated.Name, messageText, reason, nil)
 			return
 		}
 
@@ -170,12 +170,30 @@ func main() {
 				return
 			}
 			targetID := message.ChannelID
+			var duplicateReference *duplicateReferenceData
 			if link != "" {
-				var err error
-				targetID, err = forumdiscord.ParseDiscordPostLink(link, cfg.GuildID)
+				referencedID, err := forumdiscord.ParseDiscordPostLink(link, cfg.GuildID)
 				if err != nil {
 					sendErrorMessage(s, message.ChannelID, "Invalid post link", "Could not parse post link: "+err.Error())
 					return
+				}
+				referencedPost, referencedCfg, err := manager.ManagedThread(referencedID)
+				if err != nil {
+					sendErrorMessage(s, message.ChannelID, "Invalid duplicate post", "Could not load the referenced suggestion post: "+err.Error())
+					return
+				}
+				if !strings.EqualFold(strings.TrimSpace(referencedCfg.Name), "suggestion") {
+					sendErrorMessage(s, message.ChannelID, "Invalid duplicate post", "The referenced post is not in the managed suggestion Forum Channel.")
+					return
+				}
+				referencedAuthor, authorErr := manager.ThreadAuthorMention(referencedID)
+				if authorErr != nil {
+					log.Printf("get author for referenced post %s: %v", referencedID, authorErr)
+				}
+				duplicateReference = &duplicateReferenceData{
+					name:          referencedPost.Name,
+					link:          fmt.Sprintf("https://discord.com/channels/%s/%s", cfg.GuildID, referencedID),
+					authorMention: referencedAuthor,
 				}
 			}
 			authorMention, authorErr := manager.ThreadAuthorMention(targetID)
@@ -188,7 +206,7 @@ func main() {
 				return
 			}
 			messageText := fmt.Sprintf("The post was tagged `%s`, closed and locked, and renamed to **%s**.", statusAction.TagName, updated.Name)
-			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, statusAction.Command, messageText)
+			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, statusAction.Command, updated.Name, messageText, "", duplicateReference)
 			return
 		}
 
@@ -237,7 +255,7 @@ func main() {
 			messageText = fmt.Sprintf("I corrected `%s` to `%s`. %s", originalCommand, action.Command, messageText)
 		}
 		if action.Command == ".solved" || action.Command == ".false" || action.Command == ".false-report" {
-			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, action.Command, messageText)
+			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, action.Command, updated.Name, messageText, "", nil)
 		} else {
 			sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
 		}
@@ -427,7 +445,13 @@ func sendErrorMessage(s *discordgo.Session, channelID, title, description string
 	}
 }
 
-func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, command, details string) {
+type duplicateReferenceData struct {
+	name          string
+	link          string
+	authorMention string
+}
+
+func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, command, postName, details, reason string, duplicateReference *duplicateReferenceData) {
 	title := "✅ Your suggestion has been updated."
 	color := forumdiscord.ResponseColorInfo
 	switch command {
@@ -436,7 +460,7 @@ func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, comm
 		color = forumdiscord.ResponseColorSuccess
 	case ".false", ".false-report":
 		title = "⚠️ Your issue has been marked as `false report`."
-		color = forumdiscord.ResponseColorError
+		color = forumdiscord.ResponseColorWarning
 	case ".accept", ".accepted":
 		title = "✅ Your suggestion has been marked as `accepted`."
 		color = forumdiscord.ResponseColorSuccess
@@ -454,7 +478,8 @@ func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, comm
 		color = forumdiscord.ResponseColorError
 	}
 
-	description := details + "\n\nThank you for your issue or suggestion. It helps **ArchiveTune** improve day by day. We hope you have a pleasant time using **ArchiveTune**.\nOnce again, thank you."
+	description := workflowDescription(command, postName, details, reason, duplicateReference)
+
 	embed := forumdiscord.WorkflowEmbed(s, guildID, title, description, color)
 	if _, err := s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
 		Content: content,
@@ -462,4 +487,18 @@ func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, comm
 	}); err != nil {
 		log.Printf("send workflow embed: %v", err)
 	}
+}
+
+func workflowDescription(command, postName, details, reason string, duplicateReference *duplicateReferenceData) string {
+	switch command {
+	case ".false", ".false-report":
+		return fmt.Sprintf("Applied `.false`: set tag `False report`, locked the post, and renamed it to **%s**.\n\nNote: You may be warned, muted, kicked, or even worse, banned if you create nonsensical or inaccurate issue posts, so be careful.", postName)
+	case ".dupe":
+		if duplicateReference != nil {
+			return fmt.Sprintf("The post was tagged `Duplicate`, closed and locked, and renamed to **%s**.\n\n**What suggestion post has been duplicated?**\n**[\"%s\"](%s)** by %s", postName, duplicateReference.name, duplicateReference.link, duplicateReference.authorMention)
+		}
+	case ".reject", ".rejected":
+		return fmt.Sprintf("The post was tagged `Reject`, closed and locked, and renamed to **%s**. \n\nReason for this suggestion has been rejected: \n**`%s`**", postName, reason)
+	}
+	return details
 }

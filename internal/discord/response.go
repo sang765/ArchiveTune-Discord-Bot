@@ -5,6 +5,7 @@ import "github.com/bwmarrin/discordgo"
 const (
 	ResponseColorInfo    = 0x5865F2
 	ResponseColorSuccess = 0x57F287
+	ResponseColorWarning = 15105570
 	ResponseColorError   = 0xED4245
 )
 
