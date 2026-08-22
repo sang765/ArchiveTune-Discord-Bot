@@ -151,11 +151,8 @@ func main() {
 				sendErrorMessage(s, message.ChannelID, "Command failed", "Could not process `.reject`: "+err.Error())
 				return
 			}
-			messageText := fmt.Sprintf("Rejected the suggestion: replaced its tags with `Reject`, closed and locked the post, and renamed it to **%s**. Reason: %s", updated.Name, reason)
-			if authorMention != "" {
-				messageText = authorMention + " " + messageText
-			}
-			sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
+			messageText := fmt.Sprintf("The post was tagged `Reject`, closed and locked, and renamed to **%s**. Reason: %s", updated.Name, reason)
+			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, statusAction.Command, messageText)
 			return
 		}
 
@@ -190,11 +187,8 @@ func main() {
 				sendErrorMessage(s, message.ChannelID, "Command failed", "Could not process "+statusAction.Command+": "+err.Error())
 				return
 			}
-			messageText := fmt.Sprintf("Applied `%s`: replaced all tags with `%s`, closed and locked the post, and renamed it to **%s**.", statusAction.Command, statusAction.TagName, updated.Name)
-			if authorMention != "" {
-				messageText = authorMention + " " + messageText
-			}
-			sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
+			messageText := fmt.Sprintf("The post was tagged `%s`, closed and locked, and renamed to **%s**.", statusAction.TagName, updated.Name)
+			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, statusAction.Command, messageText)
 			return
 		}
 
@@ -239,13 +233,14 @@ func main() {
 		if action.Command == ".tba" || action.Command == ".tbd" {
 			messageText = fmt.Sprintf("Applied `%s`: removed all previous tags and kept only `%s`; the post was not locked, closed, or renamed.", action.Command, action.TagName)
 		}
-		if authorMention != "" {
-			messageText = authorMention + " " + messageText
-		}
 		if originalCommand != "" {
 			messageText = fmt.Sprintf("I corrected `%s` to `%s`. %s", originalCommand, action.Command, messageText)
 		}
-		sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
+		if action.Command == ".solved" || action.Command == ".false" || action.Command == ".false-report" {
+			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, action.Command, messageText)
+		} else {
+			sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
+		}
 		log.Printf("prefix command completed: channel_id=%s command=%s post_name=%q", message.ChannelID, action.Command, updated.Name)
 	})
 
@@ -429,5 +424,42 @@ func sendSuccessMessage(s *discordgo.Session, channelID, title, description stri
 func sendErrorMessage(s *discordgo.Session, channelID, title, description string) {
 	if _, err := s.ChannelMessageSendEmbed(channelID, forumdiscord.ErrorEmbed(title, description)); err != nil {
 		log.Printf("send error embed: %v", err)
+	}
+}
+
+func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, command, details string) {
+	title := "✅ Your suggestion has been updated."
+	color := forumdiscord.ResponseColorInfo
+	switch command {
+	case ".solved":
+		title = "✅ Your issue has been marked as `solved`!!!"
+		color = forumdiscord.ResponseColorSuccess
+	case ".false", ".false-report":
+		title = "⚠️ Your issue has been marked as `false report`."
+		color = forumdiscord.ResponseColorError
+	case ".accept", ".accepted":
+		title = "✅ Your suggestion has been marked as `accepted`."
+		color = forumdiscord.ResponseColorSuccess
+	case ".dupe":
+		title = "♻️ Your suggestion has been marked as `duplicate`."
+	case ".done":
+		title = "✅ Your suggestion has been marked as `done`."
+		color = forumdiscord.ResponseColorSuccess
+	case ".in-progress":
+		title = "🔄 Your suggestion is now `in progress`."
+	case ".exist":
+		title = "ℹ️ Your suggestion has been marked as `already exist`."
+	case ".reject", ".rejected":
+		title = "❌ Your suggestion has been `rejected`."
+		color = forumdiscord.ResponseColorError
+	}
+
+	description := details + "\n\nThank you for your issue or suggestion. It helps **ArchiveTune** improve day by day. We hope you have a pleasant time using **ArchiveTune**.\nOnce again, thank you."
+	embed := forumdiscord.WorkflowEmbed(s, guildID, title, description, color)
+	if _, err := s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Content: content,
+		Embeds:  []*discordgo.MessageEmbed{embed},
+	}); err != nil {
+		log.Printf("send workflow embed: %v", err)
 	}
 }
