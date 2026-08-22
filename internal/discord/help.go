@@ -11,7 +11,7 @@ func HelpEmbed() *discordgo.MessageEmbed {
 		Fields: []*discordgo.MessageEmbedField{
 			{
 				Name:   "General",
-				Value:  "`.help` — show this command list",
+				Value:  "`.help` — show this command list\n`.ytd <YouTube URL> type:<video|audio|thumbnail> [quality:<format id>]` — inspect quality, download media, and return a temporary link",
 				Inline: false,
 			},
 			{
@@ -41,6 +41,7 @@ func HelpEmbed() *discordgo.MessageEmbed {
 			{
 				Name: "Slash commands",
 				Value: "`/help` — show this command list\n" +
+					"`/ytd <url> <type> [quality]` — inspect quality, download media, and return a temporary link\n" +
 					"`/forum-sync <channel>` — sync Forum Channel tags and settings\n" +
 					"`/fix-suggestion` — apply `Maybe` to untagged suggestion posts\n" +
 					"`/tag-add <tag> [post_id]` — add a configured tag\n" +

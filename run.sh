@@ -120,6 +120,7 @@ apply_zip_update() {
   done
   chmod 755 run.sh 2>/dev/null || true
   [[ -f install-go.sh ]] && chmod 755 install-go.sh 2>/dev/null || true
+  [[ -f install-media-tools.sh ]] && chmod 755 install-media-tools.sh 2>/dev/null || true
   [[ -f discord-forum-bot ]] && chmod 755 discord-forum-bot 2>/dev/null || true
 
   rm -rf -- "$stage"
@@ -192,6 +193,28 @@ else
   log "Go compiler unavailable; using the existing binary ${BOT_BINARY}."
 fi
 
+MEDIA_ROOT="${MEDIA_TOOLS_ROOT:-${PROJECT_ROOT}/.tools/media}"
+YTDLP_BIN="${YTDLP_BIN:-}"
+FFMPEG_BIN="${FFMPEG_BIN:-}"
+if [[ -z "${YTDLP_BIN}" ]] && command -v yt-dlp >/dev/null 2>&1; then
+  YTDLP_BIN="$(command -v yt-dlp)"
+fi
+if [[ -z "${FFMPEG_BIN}" ]] && command -v ffmpeg >/dev/null 2>&1; then
+  FFMPEG_BIN="$(command -v ffmpeg)"
+fi
+if [[ "${AUTO_INSTALL_MEDIA_TOOLS:-1}" == "1" && -x ./install-media-tools.sh && ( ! -x "${YTDLP_BIN}" || ! -x "${FFMPEG_BIN}" ) ]]; then
+  log "yt-dlp or ffmpeg not found; installing local media tools..."
+  if ! ./install-media-tools.sh >/dev/null; then
+    log "Warning: media tool installation failed; .ytd will report that media tools are unavailable."
+  fi
+fi
+if [[ -z "${YTDLP_BIN}" || ! -x "${YTDLP_BIN}" ]] && [[ -x "${MEDIA_ROOT}/yt-dlp" ]]; then
+  YTDLP_BIN="${MEDIA_ROOT}/yt-dlp"
+fi
+if [[ -z "${FFMPEG_BIN}" || ! -x "${FFMPEG_BIN}" ]] && [[ -x "${MEDIA_ROOT}/ffmpeg/ffmpeg" ]]; then
+  FFMPEG_BIN="${MEDIA_ROOT}/ffmpeg/ffmpeg"
+fi
+
 if [[ ! -f "${BOT_BINARY}" ]]; then
   log "ERROR: ${BOT_BINARY} does not exist."
   log "Upload a prebuilt Linux binary or include install-go.sh in the container."
@@ -204,4 +227,4 @@ if [[ ! -x "${BOT_BINARY}" ]]; then
   exit 1
 fi
 
-exec env CONFIG_FILE="${CONFIG_FILE_PATH}" "${BOT_BINARY}"
+exec env CONFIG_FILE="${CONFIG_FILE_PATH}" YTDLP_BIN="${YTDLP_BIN}" FFMPEG_BIN="${FFMPEG_BIN}" MEDIA_WORK_DIR="${MEDIA_WORK_DIR:-${PROJECT_ROOT}/.tools/media-work}" "${BOT_BINARY}"

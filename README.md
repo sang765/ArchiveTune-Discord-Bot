@@ -38,10 +38,11 @@ The bot intentionally does not provide AI moderation, reaction management, histo
 | `/tag-remove tag:<name>` | Run in a post, or provide `post_id`. | Removes a configured tag. |
 | `/post-rename name:<new name>` | Run in a post, or provide `post_id`. | Renames a managed post. |
 | `/post-state state:<open\|close\|lock\|unlock>` | Run in a post, or provide `post_id`. | Changes the archive or lock state of a managed post. |
+| `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Available to all members. Omit quality to inspect available formats first. | Downloads the selected media with yt-dlp and returns a temporary temp.sh link. |
 
 ## Prefix commands
 
-Prefix commands are typed as normal messages. They require the **Message Content Intent** and moderator access, except `.help`, which is available to all members. All command responses, including success, error, usage, and permission messages, are sent as branded ArchiveTune Bot Embeds.
+Prefix commands are typed as normal messages. They require the **Message Content Intent** and moderator access, except `.help` and `.ytd`, which are available to all members. All command responses, including success, error, usage, and permission messages, are sent as branded ArchiveTune Bot Embeds.
 
 | Command | Behavior |
 | --- | --- |
@@ -69,8 +70,23 @@ Prefix commands are typed as normal messages. They require the **Message Content
 | `.accept` | Run directly inside a suggestion post. | Replaces all existing tags with `Accept`, closes and locks the post, and renames it to `[ACCEPTED] <old name>`. |
 | `.accepted` | Run directly inside a suggestion post. | Alias for `.accept`. |
 | `.maybe` | Run directly inside a managed post. | Applies the configured tag, locks the post, and adds the corresponding status prefix. |
+| `.ytd <YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Available to all members. Omit quality to inspect formats first. | Downloads media with yt-dlp and returns a temporary temp.sh link. |
 
 `.done`, `.in-progress`, `.exist`, `.reject`, `.tba`, and `.tbd` do not require a link. `.dupe` accepts either of the following forms:
+
+### YouTube downloader
+
+The prefix command `.ytd` and slash command `/ytd` accept YouTube and YouTube Music URLs. Supported types are `video`, `audio`, and `thumbnail`:
+
+```text
+.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:video
+.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:audio quality:251
+.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:thumbnail
+```
+
+For video or audio, omit `quality` first to receive a quality list. Run the command again with a format ID or `quality:best`. Video downloads select the highest available video and audio combination by default; audio downloads preserve the best available source and embed metadata and thumbnail when supported. Thumbnail mode downloads the source thumbnail without media conversion. Files are uploaded to [temp.sh](https://temp.sh/), which currently states a 4GB maximum and three-day expiry; treat returned links as temporary.
+
+The Pterodactyl startup script automatically installs local yt-dlp and static ffmpeg under `.tools/media` when they are missing. Set `AUTO_INSTALL_MEDIA_TOOLS=0` to disable this behavior and provide `YTDLP_BIN` and `FFMPEG_BIN` yourself.
 
 ```text
 https://discord.com/channels/<guild_id>/<post_id>

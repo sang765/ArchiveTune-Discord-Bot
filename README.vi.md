@@ -38,10 +38,11 @@ Bot cố ý không cung cấp AI moderation, quản lý reaction, lưu lịch s�
 | `/tag-remove tag:<name>` | Chạy trong post hoặc truyền `post_id`. | Gỡ tag đã cấu hình. |
 | `/post-rename name:<new name>` | Chạy trong post hoặc truyền `post_id`. | Đổi tên post được quản lý. |
 | `/post-state state:<open\|close\|lock\|unlock>` | Chạy trong post hoặc truyền `post_id`. | Thay đổi trạng thái archive hoặc lock của post. |
+| `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Mọi thành viên đều dùng được. Bỏ quality để xem danh sách format trước. | Tải media bằng yt-dlp và trả link tạm từ temp.sh. |
 
 ## Prefix command
 
-Prefix command được gửi như message thông thường. Bot cần **Message Content Intent** và người dùng cần quyền moderator, ngoại trừ `.help` có thể dùng bởi mọi thành viên. Tất cả phản hồi command, gồm thành công, lỗi, usage và thông báo quyền, đều được gửi dưới dạng Embed thương hiệu ArchiveTune Bot.
+Prefix command được gửi như message thông thường. Bot cần **Message Content Intent** và người dùng cần quyền moderator, ngoại trừ `.help` và `.ytd` có thể dùng bởi mọi thành viên. Tất cả phản hồi command, gồm thành công, lỗi, usage và thông báo quyền, đều được gửi dưới dạng Embed thương hiệu ArchiveTune Bot.
 
 | Command | Hành vi |
 | --- | --- |
@@ -69,8 +70,21 @@ Prefix command được gửi như message thông thường. Bot cần **Message
 | `.accept` | Gửi trực tiếp trong suggestion post. | Thay toàn bộ tag bằng `Accept`, close và lock post, đổi tên thành `[ACCEPTED] <tên cũ>`. |
 | `.accepted` | Gửi trực tiếp trong suggestion post. | Alias của `.accept`. |
 | `.maybe` | Gửi trực tiếp trong post được quản lý. | Áp dụng tag đã cấu hình, lock post và thêm prefix trạng thái tương ứng. |
+| `.ytd <YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Mọi thành viên đều dùng được. Bỏ quality để xem format trước. | Tải media bằng yt-dlp và trả link tạm từ temp.sh. |
 
 `.done`, `.in-progress`, `.exist`, `.reject`, `.tba` và `.tbd` không cần link. Riêng `.dupe` hỗ trợ hai dạng link:
+
+### YouTube downloader
+
+Prefix command `.ytd` và slash command `/ytd` hỗ trợ URL YouTube và YouTube Music với ba loại `video`, `audio` và `thumbnail`:
+
+```text
+.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:video
+.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:audio quality:251
+.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:thumbnail
+```
+
+Với video hoặc audio, hãy bỏ `quality` ở lần đầu để nhận danh sách format. Sau đó chạy lại với format ID hoặc `quality:best`. File được upload lên [temp.sh](https://temp.sh/) và link có thời hạn tạm thời khoảng ba ngày. Startup script của Pterodactyl tự cài yt-dlp và ffmpeg vào `.tools/media` nếu chưa có; đặt `AUTO_INSTALL_MEDIA_TOOLS=0` nếu muốn tắt cơ chế này.
 
 ```text
 https://discord.com/channels/<guild_id>/<post_id>

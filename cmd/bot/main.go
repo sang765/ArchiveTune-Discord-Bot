@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -11,12 +12,26 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/sang765/discord-forum-bot/internal/config"
 	forumdiscord "github.com/sang765/discord-forum-bot/internal/discord"
+	"github.com/sang765/discord-forum-bot/internal/media"
 )
 
 var commands = []*discordgo.ApplicationCommand{
 	{
 		Name:        "help",
 		Description: "Show all bot commands",
+	},
+	{
+		Name:        "ytd",
+		Description: "Download YouTube or YouTube Music video, audio, or thumbnail",
+		Options: []*discordgo.ApplicationCommandOption{
+			{Name: "url", Description: "YouTube or YouTube Music URL", Type: discordgo.ApplicationCommandOptionString, Required: true},
+			{Name: "type", Description: "Media type", Type: discordgo.ApplicationCommandOptionString, Required: true, Choices: []*discordgo.ApplicationCommandOptionChoice{
+				{Name: "video", Value: "video"},
+				{Name: "audio", Value: "audio"},
+				{Name: "thumbnail", Value: "thumbnail"},
+			}},
+			{Name: "quality", Description: "Format ID or best; omit to list available formats", Type: discordgo.ApplicationCommandOptionString, Required: false},
+		},
 	},
 	{
 		Name:        "forum-sync",
@@ -84,6 +99,14 @@ func main() {
 	}
 	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMessageReactions | discordgo.IntentMessageContent
 	manager := forumdiscord.NewManager(session, cfg)
+	mediaWorkDir := os.Getenv("MEDIA_WORK_DIR")
+	if mediaWorkDir == "" {
+		mediaWorkDir = ".tools/media-work"
+	}
+	if err := os.MkdirAll(mediaWorkDir, 0o755); err != nil {
+		log.Fatalf("create media workspace: %v", err)
+	}
+	ytdDownloader := media.NewDownloader(os.Getenv("YTDLP_BIN"), os.Getenv("FFMPEG_BIN"), mediaWorkDir)
 
 	session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
 		log.Printf("ArchiveTune Bot logged in as %s#%s", ready.User.Username, ready.User.Discriminator)
@@ -117,11 +140,11 @@ func main() {
 		if interaction.Type != discordgo.InteractionApplicationCommand {
 			return
 		}
-		if interaction.ApplicationCommandData().Name != "help" && !forumdiscord.HasModeratorAccess(interaction, cfg) {
+		if interaction.ApplicationCommandData().Name != "help" && interaction.ApplicationCommandData().Name != "ytd" && !forumdiscord.HasModeratorAccess(interaction, cfg) {
 			respond(s, interaction, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use this command.", true)
 			return
 		}
-		handleCommand(s, interaction, manager, cfg)
+		handleCommand(s, interaction, manager, cfg, ytdDownloader)
 	})
 	session.AddHandler(func(s *discordgo.Session, message *discordgo.MessageCreate) {
 		logMessageEvent(message)
@@ -130,8 +153,16 @@ func main() {
 		}
 		if strings.EqualFold(strings.TrimSpace(message.Content), ".help") {
 			if _, err := s.ChannelMessageSendEmbed(message.ChannelID, forumdiscord.HelpEmbed()); err != nil {
-				log.Printf("send prefix help embed: %v", err)
+				log.Println("send prefix help embed:", err)
 			}
+			return
+		}
+		if request, matched, valid, parseErr := media.ParseYTDCommand(message.Content); matched {
+			if !valid {
+				sendInfoMessage(s, message.ChannelID, "Usage", parseErr.Error())
+				return
+			}
+			go handleYTDRequest(s, message.ChannelID, request, ytdDownloader)
 			return
 		}
 		prefixCandidate := strings.HasPrefix(strings.TrimSpace(message.Content), ".")
@@ -313,13 +344,20 @@ func memberRoleIDs(message *discordgo.MessageCreate) []string {
 	return message.Member.Roles
 }
 
-func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager *forumdiscord.Manager, cfg *config.Config) {
+func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager *forumdiscord.Manager, cfg *config.Config, ytdDownloader *media.Downloader) {
 	if err := deferInteraction(s, i); err != nil {
 		log.Printf("defer slash command interaction: %v", err)
 		return
 	}
 	data := i.ApplicationCommandData()
 	switch data.Name {
+	case "ytd":
+		request := media.Request{URL: optionString(data.Options, "url"), Type: media.MediaType(optionString(data.Options, "type")), Quality: optionString(data.Options, "quality")}
+		if err := media.ValidateRequest(request); err != nil {
+			editInteraction(s, i, err.Error(), true)
+			return
+		}
+		go handleYTDInteraction(s, i, request, ytdDownloader)
 	case "help":
 		embed := forumdiscord.HelpEmbed()
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Embeds: &[]*discordgo.MessageEmbed{embed}}); err != nil {
@@ -504,4 +542,124 @@ func workflowDescription(command, postName, details, reason string, duplicateRef
 		return fmt.Sprintf("The post was tagged `Reject`, closed and locked, and renamed to **%s**. \n\nReason for this suggestion has been rejected: \n**`%s`**", postName, reason)
 	}
 	return details
+}
+
+func handleYTDRequest(s *discordgo.Session, channelID string, request media.Request, downloader *media.Downloader) {
+	info, err := downloader.Inspect(context.Background(), request)
+	if err != nil {
+		sendErrorMessage(s, channelID, "Media inspection failed", err.Error())
+		return
+	}
+	if request.Quality == "" && request.Type != media.MediaThumbnail {
+		sendMediaInfoMessage(s, channelID, info, request.Type, media.FormatSummary(info, request.Type))
+		return
+	}
+
+	sendInfoMessage(s, channelID, "Preparing media", fmt.Sprintf("Preparing `%s` download for **%s**. Please wait...", request.Type, info.Title))
+	result, err := downloader.DownloadAndUpload(context.Background(), request, info)
+	if err != nil {
+		sendErrorMessage(s, channelID, "Media download failed", err.Error())
+		return
+	}
+	if _, err := s.ChannelMessageSendEmbed(channelID, mediaResultEmbed(result)); err != nil {
+		log.Printf("send media result embed: %v", err)
+	}
+}
+
+func handleYTDInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, request media.Request, downloader *media.Downloader) {
+	info, err := downloader.Inspect(context.Background(), request)
+	if err != nil {
+		editInteraction(s, i, "Media inspection failed: "+err.Error(), true)
+		return
+	}
+	if request.Quality == "" && request.Type != media.MediaThumbnail {
+		editInteractionEmbed(s, i, mediaInfoEmbed(info, media.FormatSummary(info, request.Type), request.Type), false)
+		return
+	}
+	result, err := downloader.DownloadAndUpload(context.Background(), request, info)
+	if err != nil {
+		editInteraction(s, i, "Media download failed: "+err.Error(), true)
+		return
+	}
+	edited := mediaResultEmbed(result)
+	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Embeds: &[]*discordgo.MessageEmbed{edited}}); err != nil {
+		log.Printf("edit /ytd interaction response: %v", err)
+	}
+}
+
+func sendMediaInfoMessage(s *discordgo.Session, channelID string, info media.Info, mediaType media.MediaType, summary string) {
+	if _, err := s.ChannelMessageSendEmbed(channelID, mediaInfoEmbed(info, summary, mediaType)); err != nil {
+		log.Printf("send media info embed: %v", err)
+	}
+}
+
+func mediaInfoEmbed(info media.Info, summary string, mediaType media.MediaType) *discordgo.MessageEmbed {
+	description := fmt.Sprintf("**Type:** `%s`\n**Uploader:** `%s`\n**Duration:** `%s`\n\n%s", mediaType, safeText(info.Uploader), formatDuration(info.Duration), summary)
+	embed := forumdiscord.InfoEmbed("Media quality selection", description)
+	if info.Title != "" {
+		embed.Title = "Media quality selection · " + info.Title
+	}
+	if info.Thumbnail != "" {
+		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{URL: info.Thumbnail}
+	}
+	return embed
+}
+
+func mediaResultEmbed(result media.Result) *discordgo.MessageEmbed {
+	embed := forumdiscord.SuccessEmbed("Media ready", fmt.Sprintf("[Download `%s`](%s)\n\nThis temporary link expires after approximately 3 days.", result.FileName, result.DownloadURL))
+	embed.Fields = []*discordgo.MessageEmbedField{
+		{Name: "Title", Value: safeText(result.Info.Title), Inline: false},
+		{Name: "Uploader", Value: safeText(result.Info.Uploader), Inline: true},
+		{Name: "Duration", Value: formatDuration(result.Info.Duration), Inline: true},
+		{Name: "File", Value: fmt.Sprintf("`%s` · %s", result.FileName, formatBytes(result.FileSize)), Inline: false},
+	}
+	if result.Info.Thumbnail != "" {
+		embed.Thumbnail = &discordgo.MessageEmbedThumbnail{URL: result.Info.Thumbnail}
+	}
+	return embed
+}
+
+func editInteractionEmbed(s *discordgo.Session, i *discordgo.InteractionCreate, embed *discordgo.MessageEmbed, isError bool) {
+	if isError {
+		embed.Color = forumdiscord.ResponseColorError
+	}
+	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Embeds: &[]*discordgo.MessageEmbed{embed}}); err != nil {
+		log.Printf("edit slash command embed response: %v", err)
+	}
+}
+
+func safeText(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "Unknown"
+	}
+	return value
+}
+
+func formatDuration(seconds float64) string {
+	if seconds <= 0 {
+		return "Unknown"
+	}
+	total := int64(seconds)
+	hours := total / 3600
+	minutes := (total % 3600) / 60
+	remaining := total % 60
+	if hours > 0 {
+		return fmt.Sprintf("%dh %02dm %02ds", hours, minutes, remaining)
+	}
+	return fmt.Sprintf("%dm %02ds", minutes, remaining)
+}
+
+func formatBytes(size int64) string {
+	if size <= 0 {
+		return "Unknown size"
+	}
+	const unit = 1024.0
+	if float64(size) >= unit*unit*unit {
+		return fmt.Sprintf("%.2f GB", float64(size)/(unit*unit*unit))
+	}
+	if float64(size) >= unit*unit {
+		return fmt.Sprintf("%.2f MB", float64(size)/(unit*unit))
+	}
+	return fmt.Sprintf("%.2f KB", float64(size)/unit)
 }
