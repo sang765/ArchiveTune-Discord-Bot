@@ -182,7 +182,7 @@ docker run --rm \
 
 ## Startup script cho Pterodactyl
 
-Repository có file `run.sh` và `install-go.sh`. Đặt lệnh khởi động Pterodactyl là `./${EXECUTABLE}`, đặt `EXECUTABLE` thành `run.sh` và `GO_PACKAGE` thành `./cmd/bot`. Script sẽ chuyển vào thư mục project, dùng Go có sẵn trong container hoặc tự tải Go 1.22.2 vào thư mục local thông qua `install-go.sh` nếu image không có Go. Sau đó script build binary Linux mới và chạy bot với `CONFIG_FILE=./config.yaml`. Nếu cài đặt không được, script sẽ dùng binary executable có sẵn là `./discord-forum-bot`.
+Repository có file `run.sh` và installer chung `install-dependencies.sh`. Đặt lệnh khởi động Pterodactyl là `./${EXECUTABLE}`, đặt `EXECUTABLE` thành `run.sh` và `GO_PACKAGE` thành `./cmd/bot`. Script sẽ chuyển vào thư mục project, dùng Go có sẵn trong container hoặc gọi installer chung để cài Go, yt-dlp và ffmpeg khi cần. Sau đó script build binary Linux mới và chạy bot với `CONFIG_FILE=./config.yaml`. Nếu cài đặt không được, script sẽ dùng binary executable có sẵn là `./discord-forum-bot`. Có thể chạy thủ công `./install-dependencies.sh all`, `./install-dependencies.sh go` hoặc `./install-dependencies.sh media`.
 
 ```text
 Lệnh khởi động: ./\${EXECUTABLE}

@@ -119,8 +119,7 @@ apply_zip_update() {
     rm -f -- "$entry" 2>/dev/null || log "Warning: could not remove ${entry}."
   done
   chmod 755 run.sh 2>/dev/null || true
-  [[ -f install-go.sh ]] && chmod 755 install-go.sh 2>/dev/null || true
-  [[ -f install-media-tools.sh ]] && chmod 755 install-media-tools.sh 2>/dev/null || true
+  [[ -f install-dependencies.sh ]] && chmod 755 install-dependencies.sh 2>/dev/null || true
   [[ -f discord-forum-bot ]] && chmod 755 discord-forum-bot 2>/dev/null || true
 
   rm -rf -- "$stage"
@@ -158,16 +157,58 @@ source_fingerprint() {
   } | sha256sum | awk '{print $1}'
 }
 
+DEPENDENCY_INSTALLER="${DEPENDENCY_INSTALLER:-./install-dependencies.sh}"
+MEDIA_ROOT="${MEDIA_TOOLS_ROOT:-${PROJECT_ROOT}/.tools/media}"
+YTDLP_BIN="${YTDLP_BIN:-}"
+FFMPEG_BIN="${FFMPEG_BIN:-}"
+if [[ -z "${YTDLP_BIN}" ]] && command -v yt-dlp >/dev/null 2>&1; then
+  YTDLP_BIN="$(command -v yt-dlp)"
+fi
+if [[ -z "${FFMPEG_BIN}" ]] && command -v ffmpeg >/dev/null 2>&1; then
+  FFMPEG_BIN="$(command -v ffmpeg)"
+fi
+
 GO_BIN=""
 if command -v go >/dev/null 2>&1; then
   GO_BIN="$(command -v go)"
 elif [[ -x .tools/go/bin/go ]]; then
   GO_BIN=".tools/go/bin/go"
-elif [[ -x ./install-go.sh ]]; then
-  log "Go compiler not found; installing a local Go toolchain..."
-  GO_BIN="$(./install-go.sh)"
 fi
 
+need_go=0
+if [[ -z "${GO_BIN}" && -f go.mod ]]; then
+  need_go=1
+fi
+need_media=0
+if [[ "${AUTO_INSTALL_MEDIA_TOOLS:-1}" == "1" && ( ! -x "${YTDLP_BIN}" || ! -x "${FFMPEG_BIN}" ) ]]; then
+  need_media=1
+fi
+
+if (( need_go || need_media )); then
+  if [[ -x "${DEPENDENCY_INSTALLER}" ]]; then
+    install_mode="all"
+    if (( need_go == 1 && need_media == 0 )); then
+      install_mode="go"
+    elif (( need_go == 0 && need_media == 1 )); then
+      install_mode="media"
+    fi
+    log "Installing missing dependencies with ${DEPENDENCY_INSTALLER} (${install_mode})..."
+    if ! "${DEPENDENCY_INSTALLER}" "${install_mode}"; then
+      if (( need_go == 1 )); then
+        log "Warning: Go installation failed; the bot will use an existing binary if available."
+      fi
+      if (( need_media == 1 )); then
+        log "Warning: media tool installation failed; .ytd will report that media tools are unavailable."
+      fi
+    fi
+  else
+    log "Warning: ${DEPENDENCY_INSTALLER} is unavailable; skipping dependency installation."
+  fi
+fi
+
+if [[ -z "${GO_BIN}" && -x .tools/go/bin/go ]]; then
+  GO_BIN=".tools/go/bin/go"
+fi
 if [[ -n "${GO_BIN}" && -f go.mod ]]; then
   mkdir -p "${GO_MODULE_CACHE}" "${GO_BUILD_CACHE}"
   current_fingerprint="$(source_fingerprint)"
@@ -193,21 +234,6 @@ else
   log "Go compiler unavailable; using the existing binary ${BOT_BINARY}."
 fi
 
-MEDIA_ROOT="${MEDIA_TOOLS_ROOT:-${PROJECT_ROOT}/.tools/media}"
-YTDLP_BIN="${YTDLP_BIN:-}"
-FFMPEG_BIN="${FFMPEG_BIN:-}"
-if [[ -z "${YTDLP_BIN}" ]] && command -v yt-dlp >/dev/null 2>&1; then
-  YTDLP_BIN="$(command -v yt-dlp)"
-fi
-if [[ -z "${FFMPEG_BIN}" ]] && command -v ffmpeg >/dev/null 2>&1; then
-  FFMPEG_BIN="$(command -v ffmpeg)"
-fi
-if [[ "${AUTO_INSTALL_MEDIA_TOOLS:-1}" == "1" && -x ./install-media-tools.sh && ( ! -x "${YTDLP_BIN}" || ! -x "${FFMPEG_BIN}" ) ]]; then
-  log "yt-dlp or ffmpeg not found; installing local media tools..."
-  if ! ./install-media-tools.sh >/dev/null; then
-    log "Warning: media tool installation failed; .ytd will report that media tools are unavailable."
-  fi
-fi
 if [[ "${AUTO_INSTALL_MEDIA_TOOLS:-1}" == "1" && -x "${MEDIA_ROOT}/yt-dlp" ]]; then
   YTDLP_BIN="${MEDIA_ROOT}/yt-dlp"
 fi
@@ -217,7 +243,7 @@ fi
 
 if [[ ! -f "${BOT_BINARY}" ]]; then
   log "ERROR: ${BOT_BINARY} does not exist."
-  log "Upload a prebuilt Linux binary or include install-go.sh in the container."
+  log "Upload a prebuilt Linux binary or include install-dependencies.sh in the container."
   exit 1
 fi
 

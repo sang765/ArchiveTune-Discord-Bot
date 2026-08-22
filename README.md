@@ -184,7 +184,7 @@ docker run --rm \
 
 ## Pterodactyl startup script
 
-The repository includes `run.sh` and `install-go.sh`. Set the Pterodactyl startup command to `./${EXECUTABLE}`, set `EXECUTABLE` to `run.sh`, and set `GO_PACKAGE` to `./cmd/bot`. The script changes to the project directory, uses the container Go compiler when available, or downloads a user-local Go 1.22.2 toolchain through `install-go.sh` when Go is missing. It then builds a fresh Linux binary and starts it with `CONFIG_FILE=./config.yaml`. If installation is unavailable, it falls back to an existing executable `./discord-forum-bot`.
+The repository includes `run.sh` and the unified `install-dependencies.sh`. Set the Pterodactyl startup command to `./${EXECUTABLE}`, set `EXECUTABLE` to `run.sh`, and set `GO_PACKAGE` to `./cmd/bot`. The startup script changes to the project directory, uses the container Go compiler when available, and otherwise calls the unified installer for Go, yt-dlp, and ffmpeg as needed. It then builds a fresh Linux binary and starts it with `CONFIG_FILE=./config.yaml`. If installation is unavailable, it falls back to an existing executable `./discord-forum-bot`. The installer can also be run manually as `./install-dependencies.sh all`, `./install-dependencies.sh go`, or `./install-dependencies.sh media`.
 
 ```text
 Startup Command: ./\${EXECUTABLE}

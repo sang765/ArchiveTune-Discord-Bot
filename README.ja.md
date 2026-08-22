@@ -182,7 +182,7 @@ docker run --rm \
 
 ## Pterodactyl startup script
 
-Repository には `run.sh` と `install-go.sh` が含まれています。Pterodactyl の startup command を `./${EXECUTABLE}`、`EXECUTABLE` を `run.sh`、`GO PACKAGE` を `./cmd/bot` に設定してください。script は project directory に移動し、container に Go があればそれを使用し、Go がなければ `install-go.sh` で user-local の Go 1.22.2 toolchain をダウンロードします。その後 Linux binary を build し、`CONFIG_FILE=./config.yaml` で bot を起動します。導入できない場合は既存の executable `./discord-forum-bot` を使用します。
+Repository には `run.sh` と統合 installer の `install-dependencies.sh` が含まれています。Pterodactyl の startup command を `./${EXECUTABLE}`、`EXECUTABLE` を `run.sh`、`GO PACKAGE` を `./cmd/bot` に設定してください。script は project directory に移動し、container に Go があればそれを使用し、必要に応じて統合 installer から Go、yt-dlp、ffmpeg をインストールします。その後 Linux binary を build し、`CONFIG_FILE=./config.yaml` で bot を起動します。導入できない場合は既存の executable `./discord-forum-bot` を使用します。installer は `./install-dependencies.sh all`、`./install-dependencies.sh go`、または `./install-dependencies.sh media` として手動実行できます。
 
 ```text
 Startup Command: ./\${EXECUTABLE}
