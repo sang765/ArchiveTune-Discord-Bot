@@ -116,7 +116,7 @@ Trường `emoji` hỗ trợ emoji Unicode thông thường và cú pháp custom
   emoji: "<a:loading:1520005999040266240>"
 ```
 
-Bạn cũng có thể dùng dạng tách riêng `emoji`, `emoji_id` và `emoji_animated`. Khi dùng cú pháp custom emoji, bot tự tách tên và ID rồi gửi vào hai field `emoji_name` và `emoji_id` của Discord Forum Tag. Không dùng markup custom emoji cho emoji Unicode và không đặt `emoji_animated: true` với emoji tĩnh.
+Bạn cũng có thể dùng dạng tách riêng `emoji`, `emoji_id` và `emoji_animated`. Khi dùng cú pháp custom emoji, bot tự tách ID và chỉ gửi field `emoji_id` của Discord Forum Tag; `emoji_name` được để trống vì Discord không cho phép gửi đồng thời hai field này trong cùng một tag. Emoji Unicode được gửi qua `emoji_name`. Không đặt `emoji_animated: true` với emoji tĩnh.
 
 ## Tạo Discord Application
 

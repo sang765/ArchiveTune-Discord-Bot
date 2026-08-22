@@ -47,7 +47,7 @@ func TestMergeTagsUsesCustomEmojiID(t *testing.T) {
 	if len(got) != 1 {
 		t.Fatalf("expected one tag, got %d", len(got))
 	}
-	if got[0].EmojiID != "1520005999040266240" || got[0].EmojiName != "02V" {
+	if got[0].EmojiID != "1520005999040266240" || got[0].EmojiName != "" {
 		t.Fatalf("unexpected custom emoji fields: %#v", got[0])
 	}
 }

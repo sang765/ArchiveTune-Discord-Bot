@@ -116,7 +116,7 @@ prefix_max_distance: 2
   emoji: "<a:loading:1520005999040266240>"
 ```
 
-`emoji`、`emoji_id`、`emoji_animated` を分けて指定する形式も使用できます。custom emoji の形式を指定すると、bot が名前と ID を自動的に分離し、Discord Forum Tag の `emoji_name` と `emoji_id` に送信します。Unicode emoji に custom emoji の markup を使用したり、静的 emoji に `emoji_animated: true` を設定したりしないでください。
+`emoji`、`emoji_id`、`emoji_animated` を分けて指定する形式も使用できます。custom emoji の形式を指定すると、bot が ID を抽出し、Discord Forum Tag の `emoji_id` だけを送信します。同じ tag payload に `emoji_name` と `emoji_id` の両方を設定すると Discord に拒否されるため、`emoji_name` は空のままにします。Unicode emoji は `emoji_name` で送信されます。静的 emoji に `emoji_animated: true` を設定しないでください。
 
 ## Discord Application の作成
 

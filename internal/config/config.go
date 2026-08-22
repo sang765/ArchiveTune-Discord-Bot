@@ -49,7 +49,10 @@ func (t TagConfig) DiscordEmoji() (emojiName, emojiID string, animated bool, err
 		if t.EmojiAnimated && !parsedAnimated {
 			return "", "", false, fmt.Errorf("tag %q marks a static custom emoji as animated", t.Name)
 		}
-		return match[2], match[3], parsedAnimated, nil
+		// Discord Forum Tags require emoji_id for custom emoji and reject a
+		// payload that also contains emoji_name. The name is only needed in
+		// message markup, not in the ForumTag API payload.
+		return "", match[3], parsedAnimated, nil
 	}
 	if strings.HasPrefix(raw, "<") || strings.Contains(raw, ":") && strings.HasSuffix(raw, ">") {
 		return "", "", false, fmt.Errorf("tag %q has an invalid custom emoji; use <:name:id> or <a:name:id>", t.Name)
@@ -58,7 +61,7 @@ func (t TagConfig) DiscordEmoji() (emojiName, emojiID string, animated bool, err
 		if !isEmojiID(t.EmojiID) {
 			return "", "", false, fmt.Errorf("tag %q has an invalid emoji_id", t.Name)
 		}
-		return raw, t.EmojiID, t.EmojiAnimated, nil
+		return "", t.EmojiID, t.EmojiAnimated, nil
 	}
 	if t.EmojiAnimated {
 		return "", "", false, fmt.Errorf("tag %q sets emoji_animated without emoji_id or a custom emoji value", t.Name)

@@ -116,7 +116,7 @@ The `emoji` field accepts normal Unicode emoji and Discord custom emoji markup. 
   emoji: "<a:loading:1520005999040266240>"
 ```
 
-The parser also accepts the explicit form `emoji`, `emoji_id`, and `emoji_animated`. When a custom emoji markup value is used, the bot automatically extracts the name and ID and sends them as Discord's `emoji_name` and `emoji_id` Forum Tag fields. Do not paste a custom emoji markup value into a Unicode-only field or use `emoji_animated: true` for a static emoji.
+The parser also accepts the explicit form `emoji`, `emoji_id`, and `emoji_animated`. When custom emoji markup is used, the bot extracts the ID and sends only Discord's `emoji_id` Forum Tag field; `emoji_name` is left empty because Discord rejects both fields in the same tag payload. Unicode emoji are sent through `emoji_name`. Do not use `emoji_animated: true` for a static emoji.
 
 ## Create the Discord application
 
