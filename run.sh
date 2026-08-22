@@ -208,10 +208,10 @@ if [[ "${AUTO_INSTALL_MEDIA_TOOLS:-1}" == "1" && -x ./install-media-tools.sh && 
     log "Warning: media tool installation failed; .ytd will report that media tools are unavailable."
   fi
 fi
-if [[ -z "${YTDLP_BIN}" || ! -x "${YTDLP_BIN}" ]] && [[ -x "${MEDIA_ROOT}/yt-dlp" ]]; then
+if [[ "${AUTO_INSTALL_MEDIA_TOOLS:-1}" == "1" && -x "${MEDIA_ROOT}/yt-dlp" ]]; then
   YTDLP_BIN="${MEDIA_ROOT}/yt-dlp"
 fi
-if [[ -z "${FFMPEG_BIN}" || ! -x "${FFMPEG_BIN}" ]] && [[ -x "${MEDIA_ROOT}/ffmpeg/ffmpeg" ]]; then
+if [[ "${AUTO_INSTALL_MEDIA_TOOLS:-1}" == "1" && -x "${MEDIA_ROOT}/ffmpeg/ffmpeg" ]]; then
   FFMPEG_BIN="${MEDIA_ROOT}/ffmpeg/ffmpeg"
 fi
 
