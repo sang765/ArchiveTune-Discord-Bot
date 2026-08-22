@@ -16,6 +16,7 @@ Discord では Forum の各投稿は thread として扱われます。利用可
 | 投稿管理 | command に応じて投稿名の変更、archive、unarchive、lock、unlock を行います。 |
 | moderation workflow | issues と suggestion の status command、作成者への mention、拒否理由を提供します。 |
 | デプロイ | Go binary、Docker、systemd に対応します。secret はローカル設定から読み込み、commit しません。 |
+| Presence | `Why do I exist?` の custom status と Do Not Disturb (DND) status を表示します。 |
 
 この bot は AI moderation、reaction 管理、履歴保存、本文に基づく自動分類を意図的に提供しません。対象範囲は Forum のタグと投稿を決定的に管理することです。
 

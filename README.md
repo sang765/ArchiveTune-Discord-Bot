@@ -16,6 +16,7 @@ Discord represents a Forum post as a thread. Available Forum tags are stored on 
 | Post management | Renames, archives, unarchives, locks, and unlocks posts where the command requires it. |
 | Moderation workflows | Provides status commands for issues and suggestions, including author mentions and rejection reasons. |
 | Deployment | Supports a Go binary, Docker, or systemd. Secrets are read from a local configuration file and are not committed. |
+| Presence | Shows the custom status `Why do I exist?` with Do Not Disturb (DND) presence. |
 
 The bot intentionally does not provide AI moderation, reaction management, history storage, or content-based automatic classification. Its boundary is deterministic Forum tag and post management.
 

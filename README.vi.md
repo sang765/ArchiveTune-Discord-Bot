@@ -16,6 +16,7 @@ Discord biểu diễn mỗi post trong Forum Channel như một thread. Tag kh�
 | Quản lý post | Đổi tên, archive, unarchive, lock và unlock post theo từng command. |
 | Quy trình moderation | Có status command cho issues và suggestion, mention tác giả và gửi lý do từ chối. |
 | Triển khai | Hỗ trợ binary Go, Docker hoặc systemd. Secret chỉ đọc từ file cấu hình local và không commit. |
+| Presence | Hiển thị custom status `Why do I exist?` cùng trạng thái Do Not Disturb (DND). |
 
 Bot cố ý không cung cấp AI moderation, quản lý reaction, lưu lịch sử hoặc tự phân loại dựa trên nội dung. Ranh giới của project là quản lý tag và post trong Forum một cách deterministic.
 

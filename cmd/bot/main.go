@@ -87,6 +87,9 @@ func main() {
 
 	session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
 		log.Printf("ArchiveTune Bot logged in as %s#%s", ready.User.Username, ready.User.Discriminator)
+		if err := forumdiscord.SetArchiveTunePresence(s); err != nil {
+			log.Printf("set ArchiveTune Bot presence: %v", err)
+		}
 		if _, err := s.ApplicationCommandBulkOverwrite(ready.User.ID, cfg.GuildID, commands); err != nil {
 			log.Printf("register slash commands: %v", err)
 			return
