@@ -600,7 +600,8 @@ func sendMediaInfoMessage(s *discordgo.Session, channelID string, info media.Inf
 }
 
 func mediaInfoEmbed(info media.Info, summary string, mediaType media.MediaType) *discordgo.MessageEmbed {
-	description := fmt.Sprintf("**Type:** `%s`\n**Uploader:** `%s`\n**Duration:** `%s`\n\n%s", mediaType, safeText(info.Uploader), formatDuration(info.Duration), summary)
+	artist := safeText(info.Artist)
+	description := fmt.Sprintf("**Type:** `%s`\n**Artist:** `%s`\n**Uploader:** `%s`\n**Duration:** `%s`\n\n%s", mediaType, artist, safeText(info.Uploader), formatDuration(info.Duration), summary)
 	embed := forumdiscord.InfoEmbed("Media quality selection", description)
 	if info.Title != "" {
 		embed.Title = "Media quality selection · " + info.Title
@@ -615,6 +616,7 @@ func mediaResultEmbed(result media.Result) *discordgo.MessageEmbed {
 	embed := forumdiscord.SuccessEmbed("Media ready", fmt.Sprintf("[Download `%s`](%s)\n\nThis temporary link expires after approximately 3 days.", result.FileName, result.DownloadURL))
 	embed.Fields = []*discordgo.MessageEmbedField{
 		{Name: "Title", Value: safeText(result.Info.Title), Inline: false},
+		{Name: "Artist", Value: safeText(result.Info.Artist), Inline: true},
 		{Name: "Uploader", Value: safeText(result.Info.Uploader), Inline: true},
 		{Name: "Duration", Value: formatDuration(result.Info.Duration), Inline: true},
 		{Name: "File", Value: fmt.Sprintf("`%s` · %s", result.FileName, formatBytes(result.FileSize)), Inline: false},

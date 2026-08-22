@@ -37,6 +37,7 @@ type Info struct {
 	ID         string
 	Title      string
 	Uploader   string
+	Artist     string
 	Duration   float64
 	WebpageURL string
 	Thumbnail  string
@@ -101,6 +102,7 @@ func (d *Downloader) Inspect(ctx context.Context, request Request) (Info, error)
 		ID:         raw.ID,
 		Title:      raw.Title,
 		Uploader:   raw.Uploader,
+		Artist:     firstNonEmpty(raw.Artist, strings.Join(raw.Artists, ", "), raw.AlbumArtist, raw.Creator),
 		Duration:   raw.Duration,
 		WebpageURL: raw.WebpageURL,
 		Thumbnail:  raw.Thumbnail,
@@ -154,7 +156,7 @@ func (d *Downloader) DownloadAndUpload(ctx context.Context, request Request, inf
 
 	ctx, cancel := context.WithTimeout(ctx, d.DownloadTimeout)
 	defer cancel()
-	outputStem := sanitizeFileStem(info.Title) + "_" + string(request.Type)
+	outputStem := outputFileStem(request, info)
 	outputTemplate := filepath.Join(tempDir, outputStem+".%(ext)s")
 	args := []string{"--ignore-config", "--no-playlist", "--no-warnings", "--no-overwrites", "--retries", "3", "--socket-timeout", "30", "--concurrent-fragments", "1", "--output", outputTemplate}
 	if d.MaxFileSize > 0 {
@@ -256,6 +258,53 @@ func (d *Downloader) upload(ctx context.Context, fileName string) (string, error
 	return link, nil
 }
 
+func outputFileStem(request Request, info Info) string {
+	if isYouTubeMusicURL(request.URL) || isYouTubeMusicURL(info.WebpageURL) {
+		if request.Type == MediaAudio && strings.TrimSpace(info.Artist) != "" {
+			title := sanitizeMusicPart(info.Title)
+			artist := sanitizeMusicPart(info.Artist)
+			if title != "" && artist != "" {
+				stem := title + " - " + artist
+				if len([]rune(stem)) > 240 {
+					stem = string([]rune(stem)[:240])
+				}
+				return strings.Trim(strings.TrimSpace(stem), ".")
+			}
+		}
+	}
+	return sanitizeFileStem(info.Title) + "_" + string(request.Type)
+}
+
+func isYouTubeMusicURL(rawURL string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(rawURL))
+	return err == nil && strings.EqualFold(parsed.Hostname(), "music.youtube.com")
+}
+
+func sanitizeMusicPart(value string) string {
+	value = strings.TrimSpace(value)
+	var builder strings.Builder
+	lastSpace := false
+	for _, r := range value {
+		if unicode.IsControl(r) || strings.ContainsRune(`/\\:*?\"<>|`, r) {
+			if builder.Len() > 0 && !lastSpace {
+				builder.WriteByte('_')
+				lastSpace = true
+			}
+			continue
+		}
+		if unicode.IsSpace(r) {
+			if builder.Len() > 0 && !lastSpace {
+				builder.WriteByte(' ')
+				lastSpace = true
+			}
+			continue
+		}
+		builder.WriteRune(r)
+		lastSpace = false
+	}
+	return strings.Trim(strings.TrimSpace(builder.String()), ".")
+}
+
 func sanitizeFileStem(title string) string {
 	title = strings.TrimSpace(title)
 	var builder strings.Builder
@@ -328,6 +377,15 @@ func audioFormat(quality string) string {
 	return quality
 }
 
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
 func firstPositive(values ...int64) int64 {
 	for _, value := range values {
 		if value > 0 {
@@ -338,13 +396,17 @@ func firstPositive(values ...int64) int64 {
 }
 
 type rawInfo struct {
-	ID         string      `json:"id"`
-	Title      string      `json:"title"`
-	Uploader   string      `json:"uploader"`
-	Duration   float64     `json:"duration"`
-	WebpageURL string      `json:"webpage_url"`
-	Thumbnail  string      `json:"thumbnail"`
-	Formats    []rawFormat `json:"formats"`
+	ID          string      `json:"id"`
+	Title       string      `json:"title"`
+	Uploader    string      `json:"uploader"`
+	Artist      string      `json:"artist"`
+	Artists     []string    `json:"artists"`
+	AlbumArtist string      `json:"album_artist"`
+	Creator     string      `json:"creator"`
+	Duration    float64     `json:"duration"`
+	WebpageURL  string      `json:"webpage_url"`
+	Thumbnail   string      `json:"thumbnail"`
+	Formats     []rawFormat `json:"formats"`
 }
 
 type rawFormat struct {
