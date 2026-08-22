@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 type Format struct {
@@ -153,8 +154,9 @@ func (d *Downloader) DownloadAndUpload(ctx context.Context, request Request, inf
 
 	ctx, cancel := context.WithTimeout(ctx, d.DownloadTimeout)
 	defer cancel()
-	outputTemplate := filepath.Join(tempDir, "media.%(ext)s")
-	args := []string{"--ignore-config", "--no-playlist", "--no-warnings", "--no-overwrites", "--retries", "3", "--socket-timeout", "30", "--concurrent-fragments", "1", "--restrict-filenames", "--output", outputTemplate}
+	outputStem := sanitizeFileStem(info.Title) + "_" + string(request.Type)
+	outputTemplate := filepath.Join(tempDir, outputStem+".%(ext)s")
+	args := []string{"--ignore-config", "--no-playlist", "--no-warnings", "--no-overwrites", "--retries", "3", "--socket-timeout", "30", "--concurrent-fragments", "1", "--output", outputTemplate}
 	if d.MaxFileSize > 0 {
 		args = append(args, "--max-filesize", strconv.FormatInt(d.MaxFileSize/(1024*1024), 10)+"M")
 	}
@@ -252,6 +254,37 @@ func (d *Downloader) upload(ctx context.Context, fileName string) (string, error
 		return "", fmt.Errorf("temp.sh returned an invalid download URL")
 	}
 	return link, nil
+}
+
+func sanitizeFileStem(title string) string {
+	title = strings.TrimSpace(title)
+	var builder strings.Builder
+	lastSeparator := false
+	for _, r := range title {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			builder.WriteRune(r)
+			lastSeparator = false
+		case r == '_' || r == '-':
+			if builder.Len() > 0 && !lastSeparator {
+				builder.WriteRune(r)
+				lastSeparator = true
+			}
+		case unicode.IsSpace(r) || unicode.IsPunct(r) || unicode.IsSymbol(r):
+			if builder.Len() > 0 && !lastSeparator {
+				builder.WriteByte('_')
+				lastSeparator = true
+			}
+		}
+	}
+	stem := strings.Trim(builder.String(), "_-. ")
+	if stem == "" || stem == "." || stem == ".." {
+		stem = "download"
+	}
+	if len([]rune(stem)) > 120 {
+		stem = string([]rune(stem)[:120])
+	}
+	return stem
 }
 
 func findDownloadedFile(dir string) (string, int64, error) {
