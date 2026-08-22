@@ -207,10 +207,36 @@ func (d *Downloader) run(ctx context.Context, args ...string) ([]byte, error) {
 	return output, nil
 }
 
+const maxUploadAttempts = 3
+
 func (d *Downloader) upload(ctx context.Context, fileName string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, d.UploadTimeout)
+	defer cancel()
+
+	var lastErr error
+	for attempt := 1; attempt <= maxUploadAttempts; attempt++ {
+		link, retryable, err := d.uploadOnce(ctx, fileName)
+		if err == nil {
+			return link, nil
+		}
+		lastErr = err
+		if !retryable || attempt == maxUploadAttempts {
+			break
+		}
+		delay := time.Duration(1<<(attempt-1)) * time.Second
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return "", fmt.Errorf("upload to temp.sh: %w", ctx.Err())
+		}
+	}
+	return "", fmt.Errorf("upload to temp.sh failed after %d attempts: %w", maxUploadAttempts, lastErr)
+}
+
+func (d *Downloader) uploadOnce(ctx context.Context, fileName string) (string, bool, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		return "", fmt.Errorf("open downloaded file: %w", err)
+		return "", false, fmt.Errorf("open downloaded file: %w", err)
 	}
 	defer file.Close()
 
@@ -231,31 +257,36 @@ func (d *Downloader) upload(ctx context.Context, fileName string) (string, error
 		errCh <- multipartWriter.Close()
 	}()
 
-	ctx, cancel := context.WithTimeout(ctx, d.UploadTimeout)
-	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.TempUploadURL, reader)
 	if err != nil {
-		return "", fmt.Errorf("create temp.sh request: %w", err)
+		_ = reader.CloseWithError(err)
+		return "", false, fmt.Errorf("create temp.sh request: %w", err)
 	}
 	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 	response, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("upload to temp.sh: %w", err)
+		_ = reader.CloseWithError(err)
+		<-errCh
+		if ctx.Err() != nil {
+			return "", false, ctx.Err()
+		}
+		return "", true, err
 	}
-	defer response.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
+	response.Body.Close()
 	if err := <-errCh; err != nil {
-		return "", fmt.Errorf("read downloaded file for upload: %w", err)
+		return "", false, fmt.Errorf("read downloaded file for upload: %w", err)
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return "", fmt.Errorf("temp.sh returned HTTP %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
+		retryable := response.StatusCode == http.StatusRequestTimeout || response.StatusCode == http.StatusTooEarly || response.StatusCode == http.StatusTooManyRequests || response.StatusCode >= 500
+		return "", retryable, fmt.Errorf("temp.sh returned HTTP %d: %s", response.StatusCode, strings.TrimSpace(string(body)))
 	}
 	link := strings.TrimSpace(string(body))
 	parsed, err := url.Parse(link)
 	if err != nil || parsed.Scheme != "https" || parsed.Hostname() != "temp.sh" || parsed.Path == "" {
-		return "", fmt.Errorf("temp.sh returned an invalid download URL")
+		return "", false, fmt.Errorf("temp.sh returned an invalid download URL")
 	}
-	return link, nil
+	return link, false, nil
 }
 
 func outputFileStem(request Request, info Info) string {

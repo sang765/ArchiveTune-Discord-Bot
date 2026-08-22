@@ -84,7 +84,7 @@ Prefix command `.ytd` と slash command `/ytd` は YouTube と YouTube Music の
 .ytd https://youtu.be/dQw4w9WgXcQ?si=example type:thumbnail
 ```
 
-video または audio では、最初に `quality` を省略して interactive quality selector を開きます。dropdown から format を選び、**Download** を押すとダウンロードが始まります。format ID または `quality:best` を直接指定することもできます。ファイル名は sanitize 済みの title と type を使い、`My_Song_audio.opus`、`My_Video_video.mp4`、`My_Video_thumbnail.webp` のようになります。YouTube Music の audio は、artist metadata がある場合に `Song Title - Artist.opus` 形式となり、`_audio` suffix は付きません。yt-dlp が選択した元の extension は保持されます。ファイルは [temp.sh](https://temp.sh/) に upload され、リンクは一時的に約 3 日間有効です。Pterodactyl の startup script は、必要に応じて `.tools/media` に yt-dlp と ffmpeg を自動インストールします。無効にする場合は `AUTO_INSTALL_MEDIA_TOOLS=0` を設定してください。
+video または audio では、最初に `quality` を省略して interactive quality selector を開きます。dropdown から format を選び、**Download** を押すとダウンロードが始まります。format ID または `quality:best` を直接指定することもできます。ファイル名は sanitize 済みの title と type を使い、`My_Song_audio.opus`、`My_Video_video.mp4`、`My_Video_thumbnail.webp` のようになります。YouTube Music の audio は、artist metadata がある場合に `Song Title - Artist.opus` 形式となり、`_audio` suffix は付きません。yt-dlp が選択した元の extension は保持されます。ファイルは [temp.sh](https://temp.sh/) に upload され、リンクは一時的に約 3 日間有効です。一時的なネットワークエラーまたは HTTP 408、425、429、5xx が発生した場合、bot は指数バックオフで最大 3 回まで再試行します。恒久的な client error はすぐに返されます。Pterodactyl の startup script は、必要に応じて `.tools/media` に yt-dlp と ffmpeg を自動インストールします。無効にする場合は `AUTO_INSTALL_MEDIA_TOOLS=0` を設定してください。
 
 ```text
 https://discord.com/channels/<guild_id>/<post_id>
