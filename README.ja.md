@@ -38,7 +38,7 @@ Discord では Forum の各投稿は thread として扱われます。利用可
 | `/tag-remove tag:<name>` | 投稿内で実行するか、`post_id` を指定します。 | 設定済みタグを削除します。 |
 | `/post-rename name:<new name>` | 投稿内で実行するか、`post_id` を指定します。 | 管理対象の投稿名を変更します。 |
 | `/post-state state:<open\|close\|lock\|unlock>` | 投稿内で実行するか、`post_id` を指定します。 | 投稿の archive または lock 状態を変更します。 |
-| `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | すべての member が使用できます。quality を省略すると先に format を表示します。 | yt-dlp で media をダウンロードし、temp.sh の一時リンクを返します。 |
+| `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | すべての member が使用できます。quality を省略すると interactive selector を開きます。 | yt-dlp で media をダウンロードし、temp.sh の一時リンクを返します。 |
 
 ## Prefix command
 
@@ -84,7 +84,7 @@ Prefix command `.ytd` と slash command `/ytd` は YouTube と YouTube Music の
 .ytd https://youtu.be/dQw4w9WgXcQ?si=example type:thumbnail
 ```
 
-video または audio では、最初に `quality` を省略して format 一覧を取得し、その後 format ID または `quality:best` を指定して再実行します。ファイルは [temp.sh](https://temp.sh/) に upload され、リンクは一時的に約 3 日間有効です。Pterodactyl の startup script は、必要に応じて `.tools/media` に yt-dlp と ffmpeg を自動インストールします。無効にする場合は `AUTO_INSTALL_MEDIA_TOOLS=0` を設定してください。
+video または audio では、最初に `quality` を省略して interactive quality selector を開きます。dropdown から format を選び、**Download** を押すとダウンロードが始まります。format ID または `quality:best` を直接指定することもできます。ファイルは [temp.sh](https://temp.sh/) に upload され、リンクは一時的に約 3 日間有効です。Pterodactyl の startup script は、必要に応じて `.tools/media` に yt-dlp と ffmpeg を自動インストールします。無効にする場合は `AUTO_INSTALL_MEDIA_TOOLS=0` を設定してください。
 
 ```text
 https://discord.com/channels/<guild_id>/<post_id>

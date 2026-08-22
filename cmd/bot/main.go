@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/sang765/discord-forum-bot/internal/config"
@@ -107,6 +108,7 @@ func main() {
 		log.Fatalf("create media workspace: %v", err)
 	}
 	ytdDownloader := media.NewDownloader(os.Getenv("YTDLP_BIN"), os.Getenv("FFMPEG_BIN"), mediaWorkDir)
+	ytdSelections := media.NewSelectionStore(5 * time.Minute)
 
 	session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
 		log.Printf("ArchiveTune Bot logged in as %s#%s", ready.User.Username, ready.User.Discriminator)
@@ -137,6 +139,10 @@ func main() {
 		}
 	})
 	session.AddHandler(func(s *discordgo.Session, interaction *discordgo.InteractionCreate) {
+		if interaction.Type == discordgo.InteractionMessageComponent {
+			handleYTDComponent(s, interaction, ytdSelections, ytdDownloader)
+			return
+		}
 		if interaction.Type != discordgo.InteractionApplicationCommand {
 			return
 		}
@@ -144,7 +150,7 @@ func main() {
 			respond(s, interaction, "You need `Manage Threads`, `Administrator`, or a configured moderator role to use this command.", true)
 			return
 		}
-		handleCommand(s, interaction, manager, cfg, ytdDownloader)
+		handleCommand(s, interaction, manager, cfg, ytdDownloader, ytdSelections)
 	})
 	session.AddHandler(func(s *discordgo.Session, message *discordgo.MessageCreate) {
 		logMessageEvent(message)
@@ -162,7 +168,7 @@ func main() {
 				sendInfoMessage(s, message.ChannelID, "Usage", parseErr.Error())
 				return
 			}
-			go handleYTDRequest(s, message.ChannelID, request, ytdDownloader)
+			go handleYTDRequest(s, message.ChannelID, message.Author.ID, request, ytdDownloader, ytdSelections)
 			return
 		}
 		prefixCandidate := strings.HasPrefix(strings.TrimSpace(message.Content), ".")
@@ -344,7 +350,7 @@ func memberRoleIDs(message *discordgo.MessageCreate) []string {
 	return message.Member.Roles
 }
 
-func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager *forumdiscord.Manager, cfg *config.Config, ytdDownloader *media.Downloader) {
+func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager *forumdiscord.Manager, cfg *config.Config, ytdDownloader *media.Downloader, ytdSelections *media.SelectionStore) {
 	if err := deferInteraction(s, i); err != nil {
 		log.Printf("defer slash command interaction: %v", err)
 		return
@@ -357,7 +363,7 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager
 			editInteraction(s, i, err.Error(), true)
 			return
 		}
-		go handleYTDInteraction(s, i, request, ytdDownloader)
+		go handleYTDInteraction(s, i, request, ytdDownloader, ytdSelections)
 	case "help":
 		embed := forumdiscord.HelpEmbed()
 		if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Embeds: &[]*discordgo.MessageEmbed{embed}}); err != nil {
@@ -544,14 +550,14 @@ func workflowDescription(command, postName, details, reason string, duplicateRef
 	return details
 }
 
-func handleYTDRequest(s *discordgo.Session, channelID string, request media.Request, downloader *media.Downloader) {
+func handleYTDRequest(s *discordgo.Session, channelID, requesterID string, request media.Request, downloader *media.Downloader, selections *media.SelectionStore) {
 	info, err := downloader.Inspect(context.Background(), request)
 	if err != nil {
 		sendErrorMessage(s, channelID, "Media inspection failed", err.Error())
 		return
 	}
 	if request.Quality == "" && request.Type != media.MediaThumbnail {
-		sendMediaInfoMessage(s, channelID, info, request.Type, media.FormatSummary(info, request.Type))
+		sendYTDSelectionMessage(s, channelID, requesterID, request, info, selections)
 		return
 	}
 
@@ -566,14 +572,14 @@ func handleYTDRequest(s *discordgo.Session, channelID string, request media.Requ
 	}
 }
 
-func handleYTDInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, request media.Request, downloader *media.Downloader) {
+func handleYTDInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, request media.Request, downloader *media.Downloader, selections *media.SelectionStore) {
 	info, err := downloader.Inspect(context.Background(), request)
 	if err != nil {
 		editInteraction(s, i, "Media inspection failed: "+err.Error(), true)
 		return
 	}
 	if request.Quality == "" && request.Type != media.MediaThumbnail {
-		editInteractionEmbed(s, i, mediaInfoEmbed(info, media.FormatSummary(info, request.Type), request.Type), false)
+		sendYTDSelectionInteraction(s, i, requesterID(i), request, info, selections)
 		return
 	}
 	result, err := downloader.DownloadAndUpload(context.Background(), request, info)
@@ -662,4 +668,226 @@ func formatBytes(size int64) string {
 		return fmt.Sprintf("%.2f MB", float64(size)/(unit*unit))
 	}
 	return fmt.Sprintf("%.2f KB", float64(size)/unit)
+}
+
+func sendYTDSelectionMessage(s *discordgo.Session, channelID, requesterID string, request media.Request, info media.Info, selections *media.SelectionStore) {
+	selectionID, err := selections.Create(media.Selection{Request: request, Info: info, ChannelID: channelID, UserID: requesterID})
+	if err != nil {
+		sendErrorMessage(s, channelID, "Media selection failed", err.Error())
+		return
+	}
+	selection := media.Selection{Request: request, Info: info, ChannelID: channelID, UserID: requesterID}
+	selectionEmbed := mediaInfoEmbed(info, "Choose a quality from the menu below, then press **Download**. The download will not start until you confirm.", request.Type)
+	message, err := s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
+		Embeds:     []*discordgo.MessageEmbed{selectionEmbed},
+		Components: ytdComponents(selectionID, selection),
+	})
+	if err != nil {
+		selections.Delete(selectionID, requesterID)
+		log.Printf("send ytd selection message: %v", err)
+		return
+	}
+	if message != nil {
+		selection.MessageID = message.ID
+		// Store the message ID for traceability; the selection ID remains in component custom IDs.
+		selections.SetMessageID(selectionID, requesterID, message.ID)
+	}
+}
+
+func sendYTDSelectionInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, requesterID string, request media.Request, info media.Info, selections *media.SelectionStore) {
+	selectionID, err := selections.Create(media.Selection{Request: request, Info: info, ChannelID: i.ChannelID, UserID: requesterID})
+	if err != nil {
+		editInteraction(s, i, "Media selection failed: "+err.Error(), true)
+		return
+	}
+	selection := media.Selection{Request: request, Info: info, ChannelID: i.ChannelID, UserID: requesterID}
+	selectionEmbed := mediaInfoEmbed(info, "Choose a quality from the menu below, then press **Download**. The download will not start until you confirm.", request.Type)
+	message, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+		Embeds:     &[]*discordgo.MessageEmbed{selectionEmbed},
+		Components: componentPointer(ytdComponents(selectionID, selection)),
+	})
+	if err != nil {
+		selections.Delete(selectionID, requesterID)
+		log.Printf("edit /ytd quality selection response: %v", err)
+		return
+	}
+	if message != nil {
+		selections.SetMessageID(selectionID, requesterID, message.ID)
+	}
+}
+
+func handleYTDComponent(s *discordgo.Session, i *discordgo.InteractionCreate, selections *media.SelectionStore, downloader *media.Downloader) {
+	data := i.MessageComponentData()
+	parts := strings.SplitN(data.CustomID, "_", 3)
+	if len(parts) != 3 || parts[0] != "ytd" {
+		return
+	}
+	userID := requesterID(i)
+	selectionID := parts[2]
+	switch parts[1] {
+	case "select":
+		if len(data.Values) != 1 {
+			componentError(s, i, "Please choose exactly one quality.")
+			return
+		}
+		selection, ok := selections.SetQuality(selectionID, userID, data.Values[0])
+		if !ok {
+			componentError(s, i, "This media selection expired or belongs to another user. Run `.ytd` again.")
+			return
+		}
+		updated := mediaInfoEmbed(selection.Info, fmt.Sprintf("Selected quality: `%s`. Press **Download** to start, or **Cancel** to discard this request.", displayQuality(selection.Quality)), selection.Request.Type)
+		respondComponentUpdate(s, i, updated, ytdComponents(selectionID, selection))
+	case "download":
+		selection, ok := selections.Take(selectionID, userID)
+		if !ok {
+			componentError(s, i, "Choose a quality first, or run `.ytd` again because this selection expired.")
+			return
+		}
+		if err := respondComponentDeferredUpdate(s, i); err != nil {
+			log.Printf("defer ytd download component: %v", err)
+			return
+		}
+		request := selection.Request
+		request.Quality = selection.Quality
+		if err := editYTDMessage(s, selection.ChannelID, selection.MessageID, mediaInfoEmbed(selection.Info, fmt.Sprintf("Downloading `%s` quality `%s`... Please wait.", request.Type, displayQuality(request.Quality)), request.Type), nil); err != nil {
+			log.Printf("mark ytd message downloading: %v", err)
+		}
+		go finishYTDComponentDownload(s, selection, request, downloader)
+	case "cancel":
+		selection, ok := selections.Get(selectionID)
+		if !ok || (selection.UserID != "" && selection.UserID != userID) {
+			componentError(s, i, "This media selection expired or belongs to another user.")
+			return
+		}
+		selections.Delete(selectionID, userID)
+		respondComponentUpdate(s, i, forumdiscord.InfoEmbed("Media download cancelled", "The download request was cancelled."), nil)
+	}
+}
+
+func finishYTDComponentDownload(s *discordgo.Session, selection media.Selection, request media.Request, downloader *media.Downloader) {
+	result, err := downloader.DownloadAndUpload(context.Background(), request, selection.Info)
+	if err != nil {
+		if editErr := editYTDMessage(s, selection.ChannelID, selection.MessageID, forumdiscord.ErrorEmbed("Media download failed", err.Error()), nil); editErr != nil {
+			log.Printf("edit failed ytd message: %v", editErr)
+		}
+		return
+	}
+	if err := editYTDMessage(s, selection.ChannelID, selection.MessageID, mediaResultEmbed(result), nil); err != nil {
+		log.Printf("edit completed ytd message: %v", err)
+	}
+}
+
+func ytdComponents(selectionID string, selection media.Selection) []discordgo.MessageComponent {
+	options := make([]discordgo.SelectMenuOption, 0, 16)
+	options = append(options, discordgo.SelectMenuOption{Label: "Best available quality", Value: "best", Description: "Let yt-dlp choose the highest quality"})
+	seen := map[string]struct{}{"best": {}}
+	for _, format := range selection.Info.Formats {
+		if format.ID == "" || format.ID == "storyboard" {
+			continue
+		}
+		isVideo := format.VCodec != "" && format.VCodec != "none"
+		isAudio := format.ACodec != "" && format.ACodec != "none"
+		if selection.Request.Type == media.MediaVideo && !isVideo {
+			continue
+		}
+		if selection.Request.Type == media.MediaAudio && !isAudio {
+			continue
+		}
+		if _, ok := seen[format.ID]; ok {
+			continue
+		}
+		seen[format.ID] = struct{}{}
+		options = append(options, discordgo.SelectMenuOption{Label: truncateComponentText(media.FormatLabel(format), 100), Value: format.ID, Description: truncateComponentText(formatDescription(format), 100)})
+		if len(options) == 25 {
+			break
+		}
+	}
+	return []discordgo.MessageComponent{
+		discordgo.ActionsRow{Components: []discordgo.MessageComponent{
+			discordgo.SelectMenu{MenuType: discordgo.StringSelectMenu, CustomID: "ytd_select_" + selectionID, Placeholder: "Choose a quality", MinValues: intPointer(1), MaxValues: 1, Options: options, Disabled: false},
+		}},
+		discordgo.ActionsRow{Components: []discordgo.MessageComponent{
+			discordgo.Button{Label: "Download", Style: discordgo.SuccessButton, CustomID: "ytd_download_" + selectionID, Disabled: selection.Quality == ""},
+			discordgo.Button{Label: "Cancel", Style: discordgo.DangerButton, CustomID: "ytd_cancel_" + selectionID},
+		}},
+	}
+}
+
+func formatDescription(format media.Format) string {
+	if format.Width > 0 && format.Height > 0 {
+		return fmt.Sprintf("%dx%d · %s", format.Width, format.Height, format.Ext)
+	}
+	if format.Bitrate > 0 {
+		return fmt.Sprintf("%.0f kbps · %s", format.Bitrate, format.Ext)
+	}
+	return format.Ext
+}
+
+func displayQuality(quality string) string {
+	if strings.EqualFold(quality, "best") {
+		return "best available"
+	}
+	return quality
+}
+
+func truncateComponentText(value string, max int) string {
+	value = strings.TrimSpace(value)
+	runes := []rune(value)
+	if len(runes) <= max {
+		return value
+	}
+	return string(runes[:max-1]) + "…"
+}
+
+func intPointer(value int) *int {
+	return &value
+}
+
+func componentPointer(components []discordgo.MessageComponent) *[]discordgo.MessageComponent {
+	return &components
+}
+
+func requesterID(i *discordgo.InteractionCreate) string {
+	if i == nil {
+		return ""
+	}
+	if i.Member != nil && i.Member.User != nil {
+		return i.Member.User.ID
+	}
+	if i.User != nil {
+		return i.User.ID
+	}
+	return ""
+}
+
+func respondComponentUpdate(s *discordgo.Session, i *discordgo.InteractionCreate, embed *discordgo.MessageEmbed, components []discordgo.MessageComponent) {
+	if components == nil {
+		components = []discordgo.MessageComponent{}
+	}
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{Type: discordgo.InteractionResponseUpdateMessage, Data: &discordgo.InteractionResponseData{Embeds: []*discordgo.MessageEmbed{embed}, Components: components}}); err != nil {
+		log.Printf("update ytd component message: %v", err)
+	}
+}
+
+func respondComponentDeferredUpdate(s *discordgo.Session, i *discordgo.InteractionCreate) error {
+	return s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{Type: discordgo.InteractionResponseDeferredMessageUpdate})
+}
+
+func componentError(s *discordgo.Session, i *discordgo.InteractionCreate, content string) {
+	if err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{Type: discordgo.InteractionResponseChannelMessageWithSource, Data: &discordgo.InteractionResponseData{Embeds: []*discordgo.MessageEmbed{forumdiscord.ErrorEmbed("Media selection failed", content)}, Flags: discordgo.MessageFlagsEphemeral}}); err != nil {
+		log.Printf("respond ytd component error: %v", err)
+	}
+}
+
+func editYTDMessage(s *discordgo.Session, channelID, messageID string, embed *discordgo.MessageEmbed, components []discordgo.MessageComponent) error {
+	if messageID == "" {
+		return nil
+	}
+	if components == nil {
+		components = []discordgo.MessageComponent{}
+	}
+	edit := discordgo.NewMessageEdit(channelID, messageID).SetEmbed(embed)
+	edit.Components = &components
+	_, err := s.ChannelMessageEditComplex(edit)
+	return err
 }

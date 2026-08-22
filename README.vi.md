@@ -38,7 +38,7 @@ Bot cố ý không cung cấp AI moderation, quản lý reaction, lưu lịch s�
 | `/tag-remove tag:<name>` | Chạy trong post hoặc truyền `post_id`. | Gỡ tag đã cấu hình. |
 | `/post-rename name:<new name>` | Chạy trong post hoặc truyền `post_id`. | Đổi tên post được quản lý. |
 | `/post-state state:<open\|close\|lock\|unlock>` | Chạy trong post hoặc truyền `post_id`. | Thay đổi trạng thái archive hoặc lock của post. |
-| `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Mọi thành viên đều dùng được. Bỏ quality để xem danh sách format trước. | Tải media bằng yt-dlp và trả link tạm từ temp.sh. |
+| `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Mọi thành viên đều dùng được. Bỏ quality để mở bộ chọn tương tác trước. | Tải media bằng yt-dlp và trả link tạm từ temp.sh. |
 
 ## Prefix command
 
@@ -84,7 +84,7 @@ Prefix command `.ytd` và slash command `/ytd` hỗ trợ URL YouTube và YouTub
 .ytd https://youtu.be/dQw4w9WgXcQ?si=example type:thumbnail
 ```
 
-Với video hoặc audio, hãy bỏ `quality` ở lần đầu để nhận danh sách format. Sau đó chạy lại với format ID hoặc `quality:best`. File được upload lên [temp.sh](https://temp.sh/) và link có thời hạn tạm thời khoảng ba ngày. Startup script của Pterodactyl tự cài yt-dlp và ffmpeg vào `.tools/media` nếu chưa có; đặt `AUTO_INSTALL_MEDIA_TOOLS=0` nếu muốn tắt cơ chế này.
+Với video hoặc audio, hãy bỏ `quality` ở lần đầu để mở menu chọn quality. Chọn format trong dropdown rồi bấm **Download**; bot chưa tải cho đến khi bạn xác nhận. Bạn vẫn có thể truyền trực tiếp format ID hoặc `quality:best` nếu muốn. File được upload lên [temp.sh](https://temp.sh/) và link có thời hạn tạm thời khoảng ba ngày. Startup script của Pterodactyl tự cài yt-dlp và ffmpeg vào `.tools/media` nếu chưa có; đặt `AUTO_INSTALL_MEDIA_TOOLS=0` nếu muốn tắt cơ chế này.
 
 ```text
 https://discord.com/channels/<guild_id>/<post_id>
