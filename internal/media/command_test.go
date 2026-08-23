@@ -29,6 +29,34 @@ func TestParseYTDCommandSupportsQualityList(t *testing.T) {
 	}
 }
 
+func TestParseYTDCommandRejectsPlaylistAndAlbumURLs(t *testing.T) {
+	urls := []string{
+		"https://www.youtube.com/playlist?list=PL123",
+		"https://www.youtube.com/watch?v=video&list=PL123",
+		"https://music.youtube.com/playlist?list=OLAK5uy_test",
+		"https://music.youtube.com/browse/MPREb_test_album",
+		"https://music.youtube.com/album/test",
+	}
+	for _, rawURL := range urls {
+		if err := ValidateRequest(Request{URL: rawURL, Type: MediaAudio}); err == nil {
+			t.Fatalf("ValidateRequest(%q) error = nil, want collection rejection", rawURL)
+		}
+	}
+}
+
+func TestValidateRequestAcceptsSingleYouTubeMediaURL(t *testing.T) {
+	urls := []string{
+		"https://www.youtube.com/watch?v=video",
+		"https://youtu.be/video",
+		"https://music.youtube.com/watch?v=song",
+	}
+	for _, rawURL := range urls {
+		if err := ValidateRequest(Request{URL: rawURL, Type: MediaAudio}); err != nil {
+			t.Fatalf("ValidateRequest(%q) error = %v, want nil", rawURL, err)
+		}
+	}
+}
+
 func TestParseYTDCommandRejectsOtherHosts(t *testing.T) {
 	_, matched, valid, err := ParseYTDCommand(".ytd https://example.com/video type:video")
 	if !matched || valid || err == nil {

@@ -58,6 +58,9 @@ func ValidateRequest(request Request) error {
 	if !IsYouTubeURL(request.URL) {
 		return fmt.Errorf("URL must be a YouTube or YouTube Music link")
 	}
+	if IsYouTubeCollectionURL(request.URL) {
+		return fmt.Errorf("playlist and album downloads are not supported; provide a single video or song URL")
+	}
 	switch request.Type {
 	case MediaVideo, MediaAudio, MediaThumbnail:
 	default:
@@ -86,6 +89,18 @@ func IsYouTubeURL(raw string) bool {
 	default:
 		return false
 	}
+}
+
+func IsYouTubeCollectionURL(raw string) bool {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || !IsYouTubeURL(raw) {
+		return false
+	}
+	path := strings.ToLower(parsed.Path)
+	if parsed.Query().Get("list") != "" || strings.Contains(path, "/playlist") || strings.Contains(path, "/album") {
+		return true
+	}
+	return strings.EqualFold(parsed.Hostname(), "music.youtube.com") && strings.HasPrefix(path, "/browse/")
 }
 
 func defaultMediaType(rawURL string) MediaType {

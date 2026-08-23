@@ -61,6 +61,7 @@ type Downloader struct {
 	UploadTimeout      time.Duration
 	MaxFileSize        int64
 	MaxDurationSeconds int64
+	DiskSafetyMargin   int64
 	semaphore          chan struct{}
 	once               sync.Once
 }
@@ -76,6 +77,7 @@ func NewDownloader(ytdlpPath, ffmpegPath, workDir string) *Downloader {
 		UploadTimeout:      20 * time.Minute,
 		MaxFileSize:        1024 * 1024 * 1024,
 		MaxDurationSeconds: 2 * 60 * 60,
+		DiskSafetyMargin:   defaultDiskSafetyMarginBytes,
 		semaphore:          make(chan struct{}, 1),
 	}
 }
@@ -146,6 +148,10 @@ func (d *Downloader) DownloadAndUpload(ctx context.Context, request Request, inf
 		defer func() { <-d.semaphore }()
 	case <-ctx.Done():
 		return Result{}, ctx.Err()
+	}
+
+	if err := ensureDiskSpace(d.WorkDir, request, info, d.MaxFileSize, d.DiskSafetyMargin); err != nil {
+		return Result{}, err
 	}
 
 	tempDir, err := os.MkdirTemp(d.WorkDir, "ytd-")
