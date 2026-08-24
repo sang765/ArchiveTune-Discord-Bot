@@ -64,7 +64,7 @@ Prefix command は通常の message として送信します。利用には **Me
 | `.done` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `Done` に置換し、投稿を close / lock して `[DONE] <旧タイトル>` に変更します。 |
 | `.in-progress` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `In Progress...` に置換し、投稿を close / lock して `[IN PROGRESS] <旧タイトル>` に変更します。 |
 | `.exist` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `Already exist` に置換し、投稿を close / lock して `[ALREADY EXIST] <旧タイトル>` に変更し、作成者を mention します。 |
-| `.reject <理由>` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `Reject` に置換し、投稿を close / lock して `[REJECTED] <旧タイトル>` に変更し、作成者を mention して理由を送信します。理由は必須で、1,000 文字以内です。 |
+| `.reject <理由>` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `Reject` に置換し、投稿を close / lock して `[REJECTED] <旧タイトル>` に変更し、作成者を mention して理由を `text` code block で送信します。理由は必須で 1,000 文字以内です。理由内の mention は無効化されます。 |
 | `.tba` | suggestion 投稿内で直接実行します。 | 既存タグをすべて削除し、`TBA` のみを残します。close、lock、タイトル変更は行いません。 |
 | `.tbd` | suggestion 投稿内で直接実行します。 | 既存タグをすべて削除し、`TBD` のみを残します。close、lock、タイトル変更は行いません。 |
 | `.accept` | suggestion 投稿内で直接実行します。 | 既存タグをすべて `Accept` に置換し、投稿を close / lock して `[ACCEPTED] <旧タイトル>` に変更します。 |

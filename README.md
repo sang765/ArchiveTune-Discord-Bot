@@ -64,7 +64,7 @@ Prefix commands are typed as normal messages. They require the **Message Content
 | `.done` | Run directly inside the current suggestion post. | Replaces all existing tags with `Done`, closes and locks the post, and renames it to `[DONE] <old name>`. |
 | `.in-progress` | Run directly inside the current suggestion post. | Replaces all existing tags with `In Progress...`, closes and locks the post, and renames it to `[IN PROGRESS] <old name>`. |
 | `.exist` | Run directly inside the current suggestion post. | Replaces all existing tags with `Already exist`, closes and locks the post, renames it to `[ALREADY EXIST] <old name>`, and mentions the author. |
-| `.reject <reason>` | Run directly inside the current suggestion post. | Replaces all existing tags with `Reject`, closes and locks the post, renames it to `[REJECTED] <old name>`, mentions the author, and sends the rejection reason. The reason is required and limited to 1,000 characters. |
+| `.reject <reason>` | Run directly inside the current suggestion post. | Replaces all existing tags with `Reject`, closes and locks the post, renames it to `[REJECTED] <old name>`, mentions the author, and sends the rejection reason in a `text` code block. The reason is required, limited to 1,000 characters, and its mentions are disabled. |
 | `.tba` | Run directly inside a suggestion post. | Removes all existing tags and keeps only `TBA`. It does not close, lock, or rename the post. |
 | `.tbd` | Run directly inside a suggestion post. | Removes all existing tags and keeps only `TBD`. It does not close, lock, or rename the post. |
 | `.accept` | Run directly inside a suggestion post. | Replaces all existing tags with `Accept`, closes and locks the post, and renames it to `[ACCEPTED] <old name>`. |

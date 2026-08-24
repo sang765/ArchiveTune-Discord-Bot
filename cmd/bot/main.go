@@ -536,6 +536,11 @@ func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, comm
 	}
 }
 
+func formatRejectReason(reason string) string {
+	reason = strings.ReplaceAll(reason, "`", "'")
+	return strings.ReplaceAll(reason, "@", "@\u200b")
+}
+
 func workflowDescription(command, postName, details, reason string, duplicateReference *duplicateReferenceData) string {
 	switch command {
 	case ".false", ".false-report":
@@ -545,7 +550,7 @@ func workflowDescription(command, postName, details, reason string, duplicateRef
 			return fmt.Sprintf("The post was tagged `Duplicate`, closed and locked, and renamed to **%s**.\n\n**What suggestion post has been duplicated?**\n**[\"%s\"](%s)** by %s", postName, duplicateReference.name, duplicateReference.link, duplicateReference.authorMention)
 		}
 	case ".reject", ".rejected":
-		return fmt.Sprintf("The post was tagged `Reject`, closed and locked, and renamed to **%s**. \n\nReason for this suggestion has been rejected: \n**`%s`**", postName, reason)
+		return fmt.Sprintf("The post was tagged `Reject`, closed and locked, and renamed to **%s**.\n\nReason for this suggestion has been rejected:\n```text\n%s\n```", postName, formatRejectReason(reason))
 	}
 	return details
 }

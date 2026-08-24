@@ -26,7 +26,15 @@ func TestWorkflowDescriptionTemplates(t *testing.T) {
 	}
 
 	rejectDescription := workflowDescription(".reject", "[REJECTED] Suggestion", "ignored", "Not feasible", nil)
-	if !strings.Contains(rejectDescription, "**`Not feasible`**") {
-		t.Fatalf("reject reason is missing: %q", rejectDescription)
+	if !strings.Contains(rejectDescription, "```text\nNot feasible\n```") {
+		t.Fatalf("reject reason text block is missing: %q", rejectDescription)
+	}
+
+	safeRejectDescription := workflowDescription(".reject", "[REJECTED] Suggestion", "ignored", "<@123> @everyone", nil)
+	if strings.Contains(safeRejectDescription, "<@123>") || strings.Contains(safeRejectDescription, "@everyone") {
+		t.Fatalf("reject reason still contains a mention: %q", safeRejectDescription)
+	}
+	if !strings.Contains(safeRejectDescription, "<@\u200b123> @\u200beveryone") {
+		t.Fatalf("reject reason was not safely escaped: %q", safeRejectDescription)
 	}
 }

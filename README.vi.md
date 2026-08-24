@@ -64,7 +64,7 @@ Prefix command được gửi như message thông thường. Bot cần **Message
 | `.done` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `Done`, close và lock post, đổi tên thành `[DONE] <tên cũ>`. |
 | `.in-progress` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `In Progress...`, close và lock post, đổi tên thành `[IN PROGRESS] <tên cũ>`. |
 | `.exist` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `Already exist`, close và lock post, đổi tên thành `[ALREADY EXIST] <tên cũ>` và mention tác giả. |
-| `.reject <lý do>` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `Reject`, close và lock post, đổi tên thành `[REJECTED] <tên cũ>`, mention tác giả và gửi lý do. Lý do bắt buộc, tối đa 1.000 ký tự. |
+| `.reject <lý do>` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `Reject`, close và lock post, đổi tên thành `[REJECTED] <tên cũ>`, mention tác giả và gửi lý do trong text code block. Lý do bắt buộc, tối đa 1.000 ký tự; mọi mention bên trong lý do đều bị vô hiệu hóa. |
 | `.tba` | Gửi trực tiếp trong suggestion post. | Xóa toàn bộ tag cũ và chỉ giữ `TBA`. Không close, lock hoặc đổi tên post. |
 | `.tbd` | Gửi trực tiếp trong suggestion post. | Xóa toàn bộ tag cũ và chỉ giữ `TBD`. Không close, lock hoặc đổi tên post. |
 | `.accept` | Gửi trực tiếp trong suggestion post. | Thay toàn bộ tag bằng `Accept`, close và lock post, đổi tên thành `[ACCEPTED] <tên cũ>`. |
