@@ -118,7 +118,7 @@ ytd:
   block_playlist_album_download: true
 ```
 
-`replace_existing_tags: false` は Discord にすでに存在するタグを保持し、設定済みタグを更新または追加します。設定ファイルのリストを channel の完全なタグ一覧にしたい場合にのみ `true` にしてください。
+`replace_existing_tags: false` は Discord にすでに存在するタグを保持し、設定済みタグを更新または追加します。設定ファイルのリストを channel の完全なタグ一覧にしたい場合にのみ `true` にしてください。起動時に bot は、`ytd` block や `block_playlist_album_download: true` など、既知の不足している default 設定を自動的に追加します。既存の値は上書きしません。更新は atomic に行われ、可能な限り既存の YAML comment も保持します。`config.yaml` が書き込み不可の場合、設定エラーで起動を停止します。
 
 ### タグの emoji 設定
 

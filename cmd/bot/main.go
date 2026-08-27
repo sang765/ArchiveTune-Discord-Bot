@@ -89,6 +89,17 @@ func main() {
 	if configPath == "" {
 		configPath = "config.yaml"
 	}
+	if _, statErr := os.Stat(configPath); statErr == nil {
+		changed, defaultsErr := config.EnsureDefaults(configPath)
+		if defaultsErr != nil {
+			log.Fatalf("configuration defaults error: %v", defaultsErr)
+		}
+		if changed {
+			log.Printf("added missing configuration defaults to %s", configPath)
+		}
+	} else if !os.IsNotExist(statErr) {
+		log.Fatalf("configuration file error: %v", statErr)
+	}
 	cfg, err := config.Load(configPath)
 	if err != nil {
 		log.Fatalf("configuration error: %v", err)

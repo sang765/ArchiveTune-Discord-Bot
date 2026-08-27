@@ -120,7 +120,7 @@ ytd:
   block_playlist_album_download: true
 ```
 
-`replace_existing_tags: false` preserves tags that already exist in Discord and updates or appends declared tags. Set it to `true` only when the configured list should become the complete list of available tags for a channel.
+`replace_existing_tags: false` preserves tags that already exist in Discord and updates or appends declared tags. Set it to `true` only when the configured list should become the complete list of available tags for a channel. On startup, the bot automatically adds known missing configuration defaults, such as the `ytd` block and `block_playlist_album_download: true`, without overwriting any existing value. The update is atomic and preserves existing YAML comments where possible; if the config file is not writable, startup stops with a configuration error.
 
 ### Tag emoji configuration
 

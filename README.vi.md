@@ -118,7 +118,7 @@ ytd:
   block_playlist_album_download: true
 ```
 
-`replace_existing_tags: false` giữ lại các tag đã tồn tại trong Discord và cập nhật hoặc bổ sung các tag được khai báo. Chỉ đặt `true` khi danh sách trong config phải trở thành toàn bộ danh sách tag khả dụng của channel.
+`replace_existing_tags: false` giữ lại các tag đã tồn tại trong Discord và cập nhật hoặc bổ sung các tag được khai báo. Chỉ đặt `true` khi danh sách trong config phải trở thành toàn bộ danh sách tag khả dụng của channel. Khi startup, bot tự động bổ sung các config default đã biết còn thiếu, chẳng hạn block `ytd` và `block_playlist_album_download: true`, nhưng không ghi đè bất kỳ giá trị nào đã có. Việc cập nhật được thực hiện theo cách atomic và cố gắng giữ comment YAML hiện tại; nếu `config.yaml` không có quyền ghi, bot sẽ dừng với lỗi cấu hình.
 
 ### Cấu hình emoji cho tag
 
