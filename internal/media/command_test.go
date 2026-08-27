@@ -29,6 +29,13 @@ func TestParseYTDCommandSupportsQualityList(t *testing.T) {
 	}
 }
 
+func TestParseYTDCommandWithCollectionPolicyAllowsCollectionsWhenDisabled(t *testing.T) {
+	request, matched, valid, err := ParseYTDCommandWithCollectionPolicy(".ytd https://www.youtube.com/playlist?list=PL123 type:audio", false)
+	if err != nil || !matched || !valid {
+		t.Fatalf("expected collection request to be allowed when blocking is disabled, request=%#v matched=%t valid=%t err=%v", request, matched, valid, err)
+	}
+}
+
 func TestParseYTDCommandRejectsPlaylistAndAlbumURLs(t *testing.T) {
 	urls := []string{
 		"https://www.youtube.com/playlist?list=PL123",

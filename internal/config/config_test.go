@@ -17,6 +17,20 @@ func TestValidateRejectsPlaceholderAndDuplicateTags(t *testing.T) {
 	}
 }
 
+func TestYTDConfigDefaultsToBlockingCollections(t *testing.T) {
+	enabled := (YTDConfig{}).BlockPlaylistAlbumDownloadEnabled()
+	if !enabled {
+		t.Fatal("expected omitted YTD collection block setting to default to true")
+	}
+}
+
+func TestYTDConfigCanAllowCollections(t *testing.T) {
+	allow := false
+	if (YTDConfig{BlockPlaylistAlbumDownload: &allow}).BlockPlaylistAlbumDownloadEnabled() {
+		t.Fatal("expected explicit false YTD collection block setting to disable blocking")
+	}
+}
+
 func TestValidateAcceptsConfiguredChannels(t *testing.T) {
 	cfg := Config{
 		BotToken: "token",

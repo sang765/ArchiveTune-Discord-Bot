@@ -108,6 +108,7 @@ func main() {
 		log.Fatalf("create media workspace: %v", err)
 	}
 	ytdDownloader := media.NewDownloader(os.Getenv("YTDLP_BIN"), os.Getenv("FFMPEG_BIN"), mediaWorkDir)
+	ytdDownloader.BlockPlaylistAlbumDownload = cfg.YTD.BlockPlaylistAlbumDownloadEnabled()
 	ytdSelections := media.NewSelectionStore(5 * time.Minute)
 
 	session.AddHandler(func(s *discordgo.Session, ready *discordgo.Ready) {
@@ -163,7 +164,7 @@ func main() {
 			}
 			return
 		}
-		if request, matched, valid, parseErr := media.ParseYTDCommand(message.Content); matched {
+		if request, matched, valid, parseErr := media.ParseYTDCommandWithCollectionPolicy(message.Content, cfg.YTD.BlockPlaylistAlbumDownloadEnabled()); matched {
 			if !valid {
 				sendInfoMessage(s, message.ChannelID, "Usage", parseErr.Error())
 				return
@@ -359,7 +360,7 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager
 	switch data.Name {
 	case "ytd":
 		request := media.Request{URL: optionString(data.Options, "url"), Type: media.MediaType(optionString(data.Options, "type")), Quality: optionString(data.Options, "quality")}
-		if err := media.ValidateRequest(request); err != nil {
+		if err := media.ValidateRequestWithCollectionPolicy(request, cfg.YTD.BlockPlaylistAlbumDownloadEnabled()); err != nil {
 			editInteraction(s, i, err.Error(), true)
 			return
 		}

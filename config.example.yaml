@@ -15,6 +15,12 @@ prefix_autocorrect: true
 # Maximum Levenshtein distance for automatic correction. Recommended: 1-2.
 prefix_max_distance: 2
 
+# YouTube downloader settings.
+ytd:
+  # If true (default), reject playlist and album URLs before download.
+  # Set false to let yt-dlp handle the URL; the bot still expects one output file.
+  block_playlist_album_download: true
+
 channels:
   - id: "1498327801923637439"
     name: "issues"

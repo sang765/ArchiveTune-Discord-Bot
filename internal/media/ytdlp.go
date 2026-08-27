@@ -52,38 +52,40 @@ type Result struct {
 }
 
 type Downloader struct {
-	YTDLPPath          string
-	FFmpegPath         string
-	TempUploadURL      string
-	WorkDir            string
-	InspectTimeout     time.Duration
-	DownloadTimeout    time.Duration
-	UploadTimeout      time.Duration
-	MaxFileSize        int64
-	MaxDurationSeconds int64
-	DiskSafetyMargin   int64
-	semaphore          chan struct{}
-	once               sync.Once
+	YTDLPPath                  string
+	FFmpegPath                 string
+	TempUploadURL              string
+	WorkDir                    string
+	InspectTimeout             time.Duration
+	DownloadTimeout            time.Duration
+	UploadTimeout              time.Duration
+	MaxFileSize                int64
+	MaxDurationSeconds         int64
+	DiskSafetyMargin           int64
+	BlockPlaylistAlbumDownload bool
+	semaphore                  chan struct{}
+	once                       sync.Once
 }
 
 func NewDownloader(ytdlpPath, ffmpegPath, workDir string) *Downloader {
 	return &Downloader{
-		YTDLPPath:          ytdlpPath,
-		FFmpegPath:         ffmpegPath,
-		TempUploadURL:      "https://temp.sh/upload",
-		WorkDir:            workDir,
-		InspectTimeout:     60 * time.Second,
-		DownloadTimeout:    20 * time.Minute,
-		UploadTimeout:      20 * time.Minute,
-		MaxFileSize:        1024 * 1024 * 1024,
-		MaxDurationSeconds: 2 * 60 * 60,
-		DiskSafetyMargin:   defaultDiskSafetyMarginBytes,
-		semaphore:          make(chan struct{}, 1),
+		YTDLPPath:                  ytdlpPath,
+		FFmpegPath:                 ffmpegPath,
+		TempUploadURL:              "https://temp.sh/upload",
+		WorkDir:                    workDir,
+		InspectTimeout:             60 * time.Second,
+		DownloadTimeout:            20 * time.Minute,
+		UploadTimeout:              20 * time.Minute,
+		MaxFileSize:                1024 * 1024 * 1024,
+		MaxDurationSeconds:         2 * 60 * 60,
+		DiskSafetyMargin:           defaultDiskSafetyMarginBytes,
+		BlockPlaylistAlbumDownload: true,
+		semaphore:                  make(chan struct{}, 1),
 	}
 }
 
 func (d *Downloader) Inspect(ctx context.Context, request Request) (Info, error) {
-	if err := ValidateRequest(request); err != nil {
+	if err := ValidateRequestWithCollectionPolicy(request, d.BlockPlaylistAlbumDownload); err != nil {
 		return Info{}, err
 	}
 	if d.YTDLPPath == "" {
@@ -134,7 +136,7 @@ func (d *Downloader) Inspect(ctx context.Context, request Request) (Info, error)
 }
 
 func (d *Downloader) DownloadAndUpload(ctx context.Context, request Request, info Info) (Result, error) {
-	if err := ValidateRequest(request); err != nil {
+	if err := ValidateRequestWithCollectionPolicy(request, d.BlockPlaylistAlbumDownload); err != nil {
 		return Result{}, err
 	}
 	if info.Duration > 0 && d.MaxDurationSeconds > 0 && int64(info.Duration) > d.MaxDurationSeconds {

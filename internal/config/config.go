@@ -17,7 +17,16 @@ type Config struct {
 	ReplaceExistingTags bool            `yaml:"replace_existing_tags"`
 	PrefixAutocorrect   bool            `yaml:"prefix_autocorrect"`
 	PrefixMaxDistance   int             `yaml:"prefix_max_distance"`
+	YTD                 YTDConfig       `yaml:"ytd"`
 	Channels            []ChannelConfig `yaml:"channels"`
+}
+
+type YTDConfig struct {
+	BlockPlaylistAlbumDownload *bool `yaml:"block_playlist_album_download"`
+}
+
+func (c YTDConfig) BlockPlaylistAlbumDownloadEnabled() bool {
+	return c.BlockPlaylistAlbumDownload == nil || *c.BlockPlaylistAlbumDownload
 }
 
 type ChannelConfig struct {

@@ -24,6 +24,10 @@ type Request struct {
 var qualityPattern = regexp.MustCompile(`^[A-Za-z0-9+._-]+$`)
 
 func ParseYTDCommand(content string) (request Request, matched, valid bool, err error) {
+	return ParseYTDCommandWithCollectionPolicy(content, true)
+}
+
+func ParseYTDCommandWithCollectionPolicy(content string, blockCollections bool) (request Request, matched, valid bool, err error) {
 	fields := strings.Fields(strings.TrimSpace(content))
 	if len(fields) == 0 || !strings.EqualFold(fields[0], ".ytd") {
 		return Request{}, false, false, nil
@@ -48,17 +52,21 @@ func ParseYTDCommand(content string) (request Request, matched, valid bool, err 
 			return Request{}, true, false, fmt.Errorf("unknown option %q", key)
 		}
 	}
-	if err := ValidateRequest(request); err != nil {
+	if err := ValidateRequestWithCollectionPolicy(request, blockCollections); err != nil {
 		return Request{}, true, false, err
 	}
 	return request, true, true, nil
 }
 
 func ValidateRequest(request Request) error {
+	return ValidateRequestWithCollectionPolicy(request, true)
+}
+
+func ValidateRequestWithCollectionPolicy(request Request, blockCollections bool) error {
 	if !IsYouTubeURL(request.URL) {
 		return fmt.Errorf("URL must be a YouTube or YouTube Music link")
 	}
-	if IsYouTubeCollectionURL(request.URL) {
+	if blockCollections && IsYouTubeCollectionURL(request.URL) {
 		return fmt.Errorf("playlist and album downloads are not supported; provide a single video or song URL")
 	}
 	switch request.Type {
