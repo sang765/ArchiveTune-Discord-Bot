@@ -164,6 +164,30 @@ func main() {
 		}
 		handleCommand(s, interaction, manager, cfg, ytdDownloader, ytdSelections)
 	})
+	session.AddHandler(func(s *discordgo.Session, event *discordgo.MessageDelete) {
+		if event.Message == nil || event.Message.Author == nil || event.Message.Author.Bot {
+			return
+		}
+		channel, err := s.Channel(event.Message.ChannelID)
+		if err != nil {
+			log.Printf("get channel for deleted message: %v", err)
+			return
+		}
+		if channel.Type != discordgo.ChannelTypeGuildPublicThread && channel.Type != discordgo.ChannelTypeGuildPrivateThread {
+			return
+		}
+		if channel.ParentID != forumdiscord.SuggestionChannelID {
+			return
+		}
+		if event.Message.Author.ID != channel.OwnerID {
+			return
+		}
+		if _, err := s.ChannelDelete(channel.ID); err != nil {
+			log.Printf("delete thread %s: %v", channel.ID, err)
+		} else {
+			log.Printf("deleted thread %s because author %s deleted main post", channel.ID, event.Message.Author.ID)
+		}
+	})
 	session.AddHandler(func(s *discordgo.Session, message *discordgo.MessageCreate) {
 		logMessageEvent(message)
 		if message == nil || message.Author == nil || message.Author.Bot || message.GuildID != cfg.GuildID {
