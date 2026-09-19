@@ -312,7 +312,7 @@ func main() {
 
 		action, ok := forumdiscord.ParsePrefixCommand(message.Content)
 		originalCommand := ""
-		if !ok && cfg.PrefixAutocorrect {
+		if !ok && cfg.PrefixAutocorrect && prefixCandidate {
 			var correctedCommand string
 			action, correctedCommand, ok = forumdiscord.GuessPrefixCommand(message.Content, cfg.PrefixMaxDistance)
 			if ok {
