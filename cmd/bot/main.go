@@ -153,7 +153,14 @@ func main() {
 		if changed {
 			log.Printf("auto-tagged new suggestion post %s with Maybe", thread.ID)
 		}
-		sendSuggestionWelcomeMessage(s, thread)
+		messages, err := s.ChannelMessages(thread.ID, 1, "", "", "")
+		if err != nil {
+			log.Printf("check messages for welcome in %s: %v", thread.ID, err)
+			return
+		}
+		if len(messages) == 0 {
+			sendSuggestionWelcomeMessage(s, thread)
+		}
 	})
 	session.AddHandler(func(s *discordgo.Session, interaction *discordgo.InteractionCreate) {
 		if interaction.Type == discordgo.InteractionMessageComponent {
