@@ -153,12 +153,20 @@ func main() {
 		if changed {
 			log.Printf("auto-tagged new suggestion post %s with Maybe", thread.ID)
 		}
-		messages, err := s.ChannelMessages(thread.ID, 1, "", "", "")
+		messages, err := s.ChannelMessages(thread.ID, 10, "", "", "")
 		if err != nil {
 			log.Printf("check messages for welcome in %s: %v", thread.ID, err)
 			return
 		}
-		if len(messages) == 0 {
+		botID := s.State.User.ID
+		alreadyWelcomed := false
+		for _, msg := range messages {
+			if msg.Author != nil && msg.Author.ID == botID {
+				alreadyWelcomed = true
+				break
+			}
+		}
+		if !alreadyWelcomed {
 			sendSuggestionWelcomeMessage(s, thread)
 		}
 	})
