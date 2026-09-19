@@ -82,6 +82,10 @@ var commands = []*discordgo.ApplicationCommand{
 			{Name: "post_id", Description: "Post ID; leave empty to use the current post", Type: discordgo.ApplicationCommandOptionString, Required: false},
 		},
 	},
+	{
+		Name:        "close",
+		Description: "Close and delete your suggestion post (OP only)",
+	},
 }
 
 func main() {
@@ -149,6 +153,7 @@ func main() {
 		if changed {
 			log.Printf("auto-tagged new suggestion post %s with Maybe", thread.ID)
 		}
+		sendSuggestionWelcomeMessage(s, thread)
 	})
 	session.AddHandler(func(s *discordgo.Session, interaction *discordgo.InteractionCreate) {
 		if interaction.Type == discordgo.InteractionMessageComponent {
@@ -197,6 +202,10 @@ func main() {
 			if _, err := s.ChannelMessageSendEmbed(message.ChannelID, forumdiscord.HelpEmbed()); err != nil {
 				log.Println("send prefix help embed:", err)
 			}
+			return
+		}
+		if strings.EqualFold(strings.TrimSpace(message.Content), ".close") {
+			handleClosePrefixCommand(s, message, cfg)
 			return
 		}
 		if request, matched, valid, parseErr := media.ParseYTDCommandWithCollectionPolicy(message.Content, cfg.YTD.BlockPlaylistAlbumDownloadEnabled()); matched {
@@ -458,6 +467,31 @@ func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager
 			return
 		}
 		editInteraction(s, i, fmt.Sprintf("Set post state to `%s` for post %s.", state, updated.Mention()), false)
+	case "close":
+		channelID := i.ChannelID
+		channel, err := s.Channel(channelID)
+		if err != nil {
+			editInteraction(s, i, "Could not fetch post info: "+err.Error(), true)
+			return
+		}
+		if channel.Type != discordgo.ChannelTypeGuildPublicThread && channel.Type != discordgo.ChannelTypeGuildPrivateThread {
+			editInteraction(s, i, "This command can only be used inside a suggestion post.", true)
+			return
+		}
+		if channel.ParentID != forumdiscord.SuggestionChannelID {
+			editInteraction(s, i, "This command can only be used in the suggestion channel.", true)
+			return
+		}
+		userID := requesterID(i)
+		if channel.OwnerID != userID {
+			editInteraction(s, i, "Only the post creator can use this command.", true)
+			return
+		}
+		if _, err := s.ChannelDelete(channelID); err != nil {
+			editInteraction(s, i, "Could not delete the post: "+err.Error(), true)
+			return
+		}
+		log.Printf("user %s closed and deleted suggestion post %s", userID, channelID)
 	default:
 		editInteraction(s, i, "Unknown slash command.", true)
 	}
@@ -528,6 +562,38 @@ func sendErrorMessage(s *discordgo.Session, channelID, title, description string
 	}
 }
 
+func sendSuggestionWelcomeMessage(s *discordgo.Session, thread *discordgo.ThreadCreate) {
+	opMention := ""
+	if thread.OwnerID != "" {
+		opMention = "<@" + thread.OwnerID + ">"
+	}
+	botName := "ArchiveTune Bot"
+	botAvatar := ""
+	if s.State != nil && s.State.User != nil {
+		botName = s.State.User.Username
+		botAvatar = s.State.User.AvatarURL("")
+	}
+	embed := &discordgo.MessageEmbed{
+		Author: &discordgo.MessageEmbedAuthor{
+			Name:    botName,
+			IconURL: botAvatar,
+		},
+		Title:       "<:MahiruLoveSmileGundou:1510145553755934821> Thank for create a suggestion",
+		Color:       15717911,
+		Description: "Before you get suggestion, make sure:\n\n- Your suggestion **not already exist** in the app.\n- Your suggestion **not duplicate** with other suggestions\n- Your suggestion **is not** #issues (You can get warn if create issue in suggestion channel)\n\nIf you have confirmed the three points above, your proposal is ready for review. Please wait for feedback from the development team and contributors.",
+		Footer: &discordgo.MessageEmbedFooter{
+			Text:    "Send /close for close and delete your suggestion thread",
+			IconURL: botAvatar,
+		},
+	}
+	if _, err := s.ChannelMessageSendComplex(thread.ID, &discordgo.MessageSend{
+		Content: opMention,
+		Embeds:  []*discordgo.MessageEmbed{embed},
+	}); err != nil {
+		log.Printf("send suggestion welcome message to %s: %v", thread.ID, err)
+	}
+}
+
 type duplicateReferenceData struct {
 	name          string
 	link          string
@@ -570,6 +636,31 @@ func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, comm
 	}); err != nil {
 		log.Printf("send workflow embed: %v", err)
 	}
+}
+
+func handleClosePrefixCommand(s *discordgo.Session, message *discordgo.MessageCreate, cfg *config.Config) {
+	channel, err := s.Channel(message.ChannelID)
+	if err != nil {
+		sendErrorMessage(s, message.ChannelID, "Command failed", "Could not fetch post info: "+err.Error())
+		return
+	}
+	if channel.Type != discordgo.ChannelTypeGuildPublicThread && channel.Type != discordgo.ChannelTypeGuildPrivateThread {
+		sendErrorMessage(s, message.ChannelID, "Command failed", "This command can only be used inside a suggestion post.")
+		return
+	}
+	if channel.ParentID != forumdiscord.SuggestionChannelID {
+		sendErrorMessage(s, message.ChannelID, "Command failed", "This command can only be used in the suggestion channel.")
+		return
+	}
+	if channel.OwnerID != message.Author.ID {
+		sendErrorMessage(s, message.ChannelID, "Command failed", "Only the post creator can use this command.")
+		return
+	}
+	if _, err := s.ChannelDelete(message.ChannelID); err != nil {
+		sendErrorMessage(s, message.ChannelID, "Command failed", "Could not delete the post: "+err.Error())
+		return
+	}
+	log.Printf("user %s closed and deleted suggestion post %s via prefix command", message.Author.ID, message.ChannelID)
 }
 
 func formatRejectReason(reason string) string {

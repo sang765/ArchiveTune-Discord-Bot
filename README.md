@@ -38,6 +38,7 @@ The bot intentionally does not provide AI moderation, reaction management, histo
 | `/tag-remove tag:<name>` | Run in a post, or provide `post_id`. | Removes a configured tag. |
 | `/post-rename name:<new name>` | Run in a post, or provide `post_id`. | Renames a managed post. |
 | `/post-state state:<open\|close\|lock\|unlock>` | Run in a post, or provide `post_id`. | Changes the archive or lock state of a managed post. |
+| `/close` | Run in your own suggestion post. | Closes and deletes the suggestion post (OP only). |
 | `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Available to all members. Omit quality to open an interactive selector first. | Downloads the selected media with yt-dlp and returns a temporary temp.sh link. |
 
 ## Prefix commands
@@ -47,6 +48,7 @@ Prefix commands are typed as normal messages. They require the **Message Content
 | Command | Behavior |
 | --- | --- |
 | `.help` | Shows the complete command list in an Embed. |
+| `.close` | Close and delete your suggestion post (OP only). |
 
 ### Issue commands
 

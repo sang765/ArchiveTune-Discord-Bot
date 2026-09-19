@@ -24,6 +24,7 @@ func HelpEmbed() *discordgo.MessageEmbed {
 				Name: "Suggestion prefix commands",
 				Value: "`.accept` — replace all tags with `Accept`, close, lock, and rename to `[ACCEPTED] ...`\n" +
 					"`.accepted` — alias for `.accept`\n" +
+					"`.close` — close and delete your suggestion post (OP only)\n" +
 					"`.dupe <post link>` — replace all tags with `Duplicate`, close, lock, and rename to `[DUPLICATE] ...`\n" +
 					"`.done` — replace all tags with `Done`, close, lock, and rename to `[DONE] ...`\n" +
 					"`.in-progress` — replace all tags with `In Progress...`, close, lock, and rename to `[IN PROGRESS] ...`\n" +
@@ -47,7 +48,8 @@ func HelpEmbed() *discordgo.MessageEmbed {
 					"`/tag-add <tag> [post_id]` — add a configured tag\n" +
 					"`/tag-remove <tag> [post_id]` — remove a configured tag\n" +
 					"`/post-rename <name> [post_id]` — rename a post\n" +
-					"`/post-state <open|close|lock|unlock> [post_id]` — change post state",
+					"`/post-state <open|close|lock|unlock> [post_id]` — change post state\n" +
+					"`/close` — close and delete your suggestion post (OP only)",
 				Inline: false,
 			},
 		},
