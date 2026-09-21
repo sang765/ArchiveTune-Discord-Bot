@@ -1,0 +1,89 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Test
+        run: go test ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags='-s -w' -o dist/discord-forum-bot-linux-amd64 ./cmd/bot
+          GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o dist/discord-forum-bot-linux-arm64 ./cmd/bot
+          GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o dist/discord-forum-bot-darwin-amd64 ./cmd/bot
+          GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags='-s -w' -o dist/discord-forum-bot-darwin-arm64 ./cmd/bot
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags='-s -w' -o dist/discord-forum-bot-windows-amd64.exe ./cmd/bot
+
+      - name: Get commit info
+        id: commit
+        run: |
+          SHA="${{ github.sha }}"
+          SHORT_SHA="${SHA::7}"
+          COMMIT_MSG=$(git log -1 --pretty=format:'%s')
+          AUTHOR=$(git log -1 --pretty=format:'%an')
+          CO_AUTHOR=$(git log -1 --pretty=format:'%b' | grep -oP '(?<=Co-authored-by: ).*' | head -1 || true)
+          echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
+          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+          echo "co_author=$CO_AUTHOR" >> $GITHUB_OUTPUT
+
+      - name: Verify build
+        id: verify
+        run: |
+          if [ -f "dist/discord-forum-bot-linux-amd64" ]; then
+            echo "status=✅" >> $GITHUB_OUTPUT
+          else
+            echo "status=❌" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes
+        run: |
+          SHORT_SHA="${{ steps.commit.outputs.short_sha }}"
+          COMMIT_MSG="${{ steps.commit.outputs.commit_msg }}"
+          AUTHOR="${{ steps.commit.outputs.author }}"
+          CO_AUTHOR="${{ steps.commit.outputs.co_author }}"
+          SHA="${{ steps.commit.outputs.sha }}"
+          VERIFY="${{ steps.verify.outputs.status }}"
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+
+          cat > release_notes.md <<EOF
+          **${SHORT_SHA}**
+
+          - Commit: "${COMMIT_MSG}"
+          - By: @${AUTHOR}$(if [ -n "$CO_AUTHOR" ]; then echo " and @${CO_AUTHOR}"; fi)
+          - SHA: \`${SHA}\`
+          - Verify: ${VERIFY}
+
+          -[View commit change](${COMMIT_URL})
+          EOF
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.sha }}
+          name: ${{ steps.commit.outputs.short_sha }}
+          body_path: release_notes.md
+          files: dist/*
+          draft: false
+          prerelease: false
