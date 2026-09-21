@@ -145,13 +145,8 @@ func main() {
 		if thread == nil || thread.GuildID != cfg.GuildID || thread.ParentID != forumdiscord.SuggestionChannelID {
 			return
 		}
-		changed, err := manager.MaybeTagIfMissing(thread.ID)
-		if err != nil {
+		if _, err := manager.MaybeTagIfMissing(thread.ID); err != nil {
 			log.Printf("auto-tag suggestion post %s: %v", thread.ID, err)
-			return
-		}
-		if changed {
-			log.Printf("auto-tagged new suggestion post %s with Maybe", thread.ID)
 		}
 		messages, err := s.ChannelMessages(thread.ID, 10, "", "", "")
 		if err != nil {
