@@ -39,13 +39,9 @@ jobs:
         run: |
           SHA="${{ github.sha }}"
           SHORT_SHA="${SHA::7}"
-          COMMIT_MSG=$(git log -1 --pretty=format:'%s')
-          AUTHOR=$(git log -1 --pretty=format:'%an')
-          CO_AUTHOR=$(git log -1 --pretty=format:'%b' | grep -oP '(?<=Co-authored-by: ).*' | head -1 || true)
+          CO_AUTHOR=$(git log -1 --pretty=format:'%b' | grep -oP '(?<=Co-authored-by: ).*' | head -1 | grep -oP '(?<=@)\S+' || true)
           echo "sha=$SHA" >> $GITHUB_OUTPUT
           echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-          echo "commit_msg=$COMMIT_MSG" >> $GITHUB_OUTPUT
-          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
           echo "co_author=$CO_AUTHOR" >> $GITHUB_OUTPUT
 
       - name: Verify build
@@ -60,22 +56,20 @@ jobs:
       - name: Generate release notes
         run: |
           SHORT_SHA="${{ steps.commit.outputs.short_sha }}"
-          COMMIT_MSG="${{ steps.commit.outputs.commit_msg }}"
-          AUTHOR="${{ steps.commit.outputs.author }}"
           CO_AUTHOR="${{ steps.commit.outputs.co_author }}"
           SHA="${{ steps.commit.outputs.sha }}"
           VERIFY="${{ steps.verify.outputs.status }}"
           COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          AUTHOR="${{ github.actor }}"
 
           cat > release_notes.md <<EOF
           **${SHORT_SHA}**
 
-          - Commit: "${COMMIT_MSG}"
           - By: @${AUTHOR}$(if [ -n "$CO_AUTHOR" ]; then echo " and @${CO_AUTHOR}"; fi)
           - SHA: \`${SHA}\`
           - Verify: ${VERIFY}
 
-          -[View commit change](${COMMIT_URL})
+          <sub>-# [View commit change](${COMMIT_URL})</sub>
           EOF
 
       - name: Create release
