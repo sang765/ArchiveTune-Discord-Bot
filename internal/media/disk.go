@@ -3,21 +3,12 @@ package media
 import (
 	"fmt"
 	"math"
-	"syscall"
 )
 
 const (
 	defaultDiskSafetyMarginBytes int64 = 64 * 1024 * 1024
 	defaultUnknownMediaSizeBytes int64 = 256 * 1024 * 1024
 )
-
-func availableDiskBytes(path string) (int64, error) {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs(path, &stat); err != nil {
-		return 0, err
-	}
-	return int64(stat.Bavail) * int64(stat.Bsize), nil
-}
 
 func requiredDiskBytes(request Request, info Info, maxFileSize, safetyMargin int64) int64 {
 	estimated := estimateMediaSize(request, info, maxFileSize)
