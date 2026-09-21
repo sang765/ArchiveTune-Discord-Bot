@@ -73,7 +73,7 @@ jobs:
           - SHA: \`${SHA}\`
           - Verify: ${VERIFY}
 
-          <sub>-# [View commit change](${COMMIT_URL})</sub>
+          <sub>[View commit change](${COMMIT_URL})</sub>
           EOF
 
       - name: Create release
