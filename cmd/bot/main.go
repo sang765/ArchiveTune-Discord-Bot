@@ -148,9 +148,13 @@ func main() {
 		if _, err := manager.MaybeTagIfMissing(thread.ID); err != nil {
 			log.Printf("auto-tag suggestion post %s: %v", thread.ID, err)
 		}
+		// Add a small delay to let Discord fully create the thread
+		time.Sleep(500 * time.Millisecond)
 		messages, err := s.ChannelMessages(thread.ID, 10, "", "", "")
 		if err != nil {
 			log.Printf("check messages for welcome in %s: %v", thread.ID, err)
+			// Try sending welcome anyway - ChannelMessages might fail but sending works
+			sendSuggestionWelcomeMessage(s, thread)
 			return
 		}
 		botID := s.State.User.ID
