@@ -171,6 +171,11 @@ func main() {
 	})
 	session.AddHandler(func(s *discordgo.Session, interaction *discordgo.InteractionCreate) {
 		if interaction.Type == discordgo.InteractionMessageComponent {
+			data := interaction.MessageComponentData()
+			if data.CustomID == "close_suggestion" {
+				handleCloseSuggestionButton(s, interaction, cfg)
+				return
+			}
 			handleYTDComponent(s, interaction, ytdSelections, ytdDownloader)
 			return
 		}
@@ -592,17 +597,32 @@ func sendSuggestionWelcomeMessage(s *discordgo.Session, thread *discordgo.Thread
 			Name:    botName,
 			IconURL: botAvatar,
 		},
-		Title:       "<:MahiruLoveSmileGundou:1510145553755934821> Thank for create a suggestion",
-		Color:       15717911,
-		Description: "Before you get suggestion, make sure:\n\n- Your suggestion **not already exist** in the app.\n- Your suggestion **not duplicate** with other suggestions\n- Your suggestion **is not** #issues (You can get warn if create issue in suggestion channel)\n\nIf you have confirmed the three points above, your proposal is ready for review. Please wait for feedback from the development team and contributors.",
+		Title: "ArchiveTune Suggestion System",
+		Color: 0xFEE75C,
+		Description: "👋 Thank you for your suggestion!\n\n" +
+			"Before our team reviews your idea, please confirm that:\n\n" +
+			"🎯 **Unique Feature** — It does not already exist in ArchiveTune.\n" +
+			"🔍 **No Duplicates** — It has not been suggested by another user.\n" +
+			"🐛 **Not a Bug Report** — Bugs should be reported under #issues (posting bug reports here may result in a warning).\n\n" +
+			"⏳ Once verified, your feedback will be reviewed by developers and contributors.",
 		Footer: &discordgo.MessageEmbedFooter{
-			Text:    "Send /close for close and delete your suggestion thread",
+			Text:    "Need to cancel? Run /close to delete this thread.",
 			IconURL: botAvatar,
 		},
 	}
+	components := []discordgo.MessageComponent{
+		discordgo.ActionsRow{Components: []discordgo.MessageComponent{
+			discordgo.Button{
+				Label:    "Close Suggestion",
+				Style:    discordgo.DangerButton,
+				CustomID: "close_suggestion",
+			},
+		}},
+	}
 	if _, err := s.ChannelMessageSendComplex(thread.ID, &discordgo.MessageSend{
-		Content: opMention,
-		Embeds:  []*discordgo.MessageEmbed{embed},
+		Content:    opMention,
+		Embeds:     []*discordgo.MessageEmbed{embed},
+		Components: components,
 	}); err != nil {
 		log.Printf("send suggestion welcome message to %s: %v", thread.ID, err)
 	}
@@ -675,6 +695,32 @@ func handleClosePrefixCommand(s *discordgo.Session, message *discordgo.MessageCr
 		return
 	}
 	log.Printf("user %s closed and deleted suggestion post %s via prefix command", message.Author.ID, message.ChannelID)
+}
+
+func handleCloseSuggestionButton(s *discordgo.Session, interaction *discordgo.InteractionCreate, cfg *config.Config) {
+	channel, err := s.Channel(interaction.ChannelID)
+	if err != nil {
+		respond(s, interaction, "Could not fetch post info: "+err.Error(), true)
+		return
+	}
+	if channel.Type != discordgo.ChannelTypeGuildPublicThread && channel.Type != discordgo.ChannelTypeGuildPrivateThread {
+		respond(s, interaction, "This button can only be used inside a suggestion post.", true)
+		return
+	}
+	if channel.ParentID != forumdiscord.SuggestionChannelID {
+		respond(s, interaction, "This button can only be used in the suggestion channel.", true)
+		return
+	}
+	userID := requesterID(interaction)
+	if channel.OwnerID != userID {
+		respond(s, interaction, "Only the post creator can use this button.", true)
+		return
+	}
+	if _, err := s.ChannelDelete(interaction.ChannelID); err != nil {
+		respond(s, interaction, "Could not delete the post: "+err.Error(), true)
+		return
+	}
+	log.Printf("user %s closed and deleted suggestion post %s via button", userID, interaction.ChannelID)
 }
 
 func formatRejectReason(reason string) string {
