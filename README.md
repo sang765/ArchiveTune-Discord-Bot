@@ -225,6 +225,10 @@ sudo journalctl -u discord-forum-bot -f
 
 The binary, Dockerfile, and systemd unit are portable across both options.
 
+## Privacy
+
+The bot does not store message content, has no database, and does not use content for AI/ML training. See the [Privacy Policy](PRIVACY.md) for details.
+
 ## Testing
 
 The project includes unit tests for configuration validation, tag merging, command parsing, link parsing, status restrictions, archived-thread pagination, and rejection reasons.

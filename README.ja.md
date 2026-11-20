@@ -221,6 +221,10 @@ sudo journalctl -u discord-forum-bot -f
 
 Binary、Dockerfile、systemd unit は両方の方法で portable に利用できます。
 
+## プライバシー
+
+Bot は message 内容を保存せず、database も持たず、AI/ML の学習にも内容を使用しません。詳細は [Privacy Policy](PRIVACY.md) を参照してください。
+
 ## テスト
 
 Project には config validation、tag merge、command parser、link parser、channel 制限、archived thread pagination、reject reason の unit test が含まれています。

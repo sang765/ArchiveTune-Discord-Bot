@@ -221,6 +221,10 @@ sudo journalctl -u discord-forum-bot -f
 
 Binary, Dockerfile và systemd unit đều portable giữa hai phương án.
 
+## Quyền riêng tư
+
+Bot không lưu nội dung tin nhắn, không có database và không dùng nội dung để huấn luyện AI/ML. Xem [Chính sách quyền riêng tư](PRIVACY.md) để biết chi tiết.
+
 ## Kiểm thử
 
 Project có unit test cho validation config, merge tag, parser command, parser link, giới hạn channel, pagination archived thread và lý do reject.
