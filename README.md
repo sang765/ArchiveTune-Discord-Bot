@@ -2,7 +2,7 @@
 
 [English](README.md) · [日本語](README.ja.md) · [Tiếng Việt](README.vi.md)
 
-**ArchiveTune Bot** is a focused Discord bot written in **Go** for managing tags and posts in Discord Forum Channels. The bot has no database and does not process content with AI. Discord remains the source of truth, while `config.yaml` stores channel and bot settings.
+**ArchiveTune Bot** is a focused Discord bot written in **Go** for managing tags and posts in Discord Forum Channels. The bot has no database, does not process content with AI, and does not request the Message Content Intent. Discord remains the source of truth, while `config.yaml` stores channel and bot settings.
 
 Discord represents a Forum post as a thread. Available Forum tags are stored on the parent channel, while the tags applied to an individual post are stored on the thread.[1] [2] This bot therefore uses the Gateway for realtime events and the Discord REST API for deterministic post and tag operations.
 
@@ -24,8 +24,8 @@ The bot intentionally does not provide AI moderation, reaction management, histo
 
 | Channel | ID | Special behavior |
 | --- | --- | --- |
-| `issues` | `1498327801923637439` | `.solved`, `.false`, and `.false-report` are restricted to this Forum Channel. Successful `.solved` and `.false` operations mention the post author. |
-| `suggestion` | `1498328044635422790` | New untagged posts automatically receive `Maybe`. `/fix-suggestion`, `.dupe`, `.done`, `.in-progress`, `.exist`, `.reject`, `.tba`, and `.tbd` operate here. |
+| `issues` | `1498327801923637439` | `/solved`, `/false`, and `/false-report` are restricted to this Forum Channel. Successful `/solved` and `/false` operations mention the post author. |
+| `suggestion` | `1498328044635422790` | New untagged posts automatically receive `Maybe`. `/fix-suggestion`, `/dupe`, `/done`, `/in-progress`, `/exist`, `/reject`, `/tba`, and `/tbd` operate here. |
 
 ## Slash commands
 
@@ -41,65 +41,44 @@ The bot intentionally does not provide AI moderation, reaction management, histo
 | `/close` | Run in your own suggestion post. | Closes and deletes the suggestion post (OP only). |
 | `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Available to all members. Omit quality to open an interactive selector first. | Downloads the selected media with yt-dlp and returns a temporary temp.sh link. |
 
-## Prefix commands
+## Status slash commands
 
-Prefix commands are typed as normal messages. They require the **Message Content Intent** and moderator access, except `.help` and `.ytd`, which are available to all members. All command responses, including success, error, usage, and permission messages, are sent as branded ArchiveTune Bot Embeds.
-
-| Command | Behavior |
-| --- | --- |
-| `.help` | Shows the complete command list in an Embed. |
-| `.close` | Close and delete your suggestion post (OP only). |
-
-### Issue commands
+All workflow commands are Discord app (slash) commands, so the bot never needs the **Message Content Intent**. Status commands require moderator access; `/help` and `/ytd` are available to all members. All responses, including errors and permission messages, are branded ArchiveTune Bot Embeds. Every status command has an optional `post_id`; leave it empty to target the post you are currently in.
 
 | Command | Behavior |
 | --- | --- |
-| `.solved` | In `issues`, replaces the current workflow tag with `Solved`, locks the post, and renames it to `[SOLVED] <old name>`. The bot mentions the author. |
-| `.false` | In `issues`, replaces the current workflow tag with `False report`, locks the post, and renames it to `[FALSE REPORT] <old name>`. The bot mentions the author. |
-| `.false-report` | Full-name alias for the `False report` workflow in `issues`. |
+| `/solved` | In `issues`, replaces the current workflow tag with `Solved`, locks the post, and renames it to `[SOLVED] <old name>`. Mentions the author. |
+| `/false`, `/false-report` | In `issues`, replaces the current workflow tag with `False report`, locks the post, and renames it to `[FALSE REPORT] <old name>`. Mentions the author. |
+| `/dupe post_link:<link>` | Replaces all tags with `Duplicate`, closes and locks the target, renames it to `[DUPLICATE] <old name>`, and mentions the target author. The link must point to a post in the managed suggestion channel. |
+| `/done` | Replaces all tags with `Done`, closes and locks the post, and renames it to `[DONE] <old name>`. |
+| `/in-progress` | Replaces all tags with `In Progress...`, closes and locks the post, and renames it to `[IN PROGRESS] <old name>`. |
+| `/exist` | Replaces all tags with `Already exist`, closes and locks the post, renames it to `[ALREADY EXIST] <old name>`, and mentions the author. |
+| `/reject reason:<reason>` | Replaces all tags with `Reject`, closes and locks the post, renames it to `[REJECTED] <old name>`, mentions the author, and sends the reason in a `text` code block. The reason is required and limited to 1,000 characters. |
+| `/accept` | Replaces all tags with `Accept`, closes and locks the post, and renames it to `[ACCEPTED] <old name>`. |
+| `/accepted`, `/rejected` | Aliases retained for moderators who used the old command names. |
+| `/tba`, `/tbd` | Replace all tags with `TBA` or `TBD` only; the post is not closed, locked, or renamed. |
+| `/maybe`, `/duplicate`, `/already-exist`, `/problem`, `/question`, `/stable`, `/nightly`, `/meta` | Apply the configured tag, lock the post, and add the matching title prefix. |
 
-### Suggestion commands
-
-| Command | Usage | Behavior |
-| --- | --- | --- |
-| `.dupe <post link or message link>` | Requires a Discord post/message link. | Replaces all existing tags with `Duplicate`, closes and locks the target suggestion post, renames it to `[DUPLICATE] <old name>`, and mentions the target author. |
-| `.done` | Run directly inside the current suggestion post. | Replaces all existing tags with `Done`, closes and locks the post, and renames it to `[DONE] <old name>`. |
-| `.in-progress` | Run directly inside the current suggestion post. | Replaces all existing tags with `In Progress...`, closes and locks the post, and renames it to `[IN PROGRESS] <old name>`. |
-| `.exist` | Run directly inside the current suggestion post. | Replaces all existing tags with `Already exist`, closes and locks the post, renames it to `[ALREADY EXIST] <old name>`, and mentions the author. |
-| `.reject <reason>` | Run directly inside the current suggestion post. | Replaces all existing tags with `Reject`, closes and locks the post, renames it to `[REJECTED] <old name>`, mentions the author, and sends the rejection reason in a `text` code block. The reason is required, limited to 1,000 characters, and its mentions are disabled. |
-| `.tba` | Run directly inside a suggestion post. | Removes all existing tags and keeps only `TBA`. It does not close, lock, or rename the post. |
-| `.tbd` | Run directly inside a suggestion post. | Removes all existing tags and keeps only `TBD`. It does not close, lock, or rename the post. |
-| `.accept` | Run directly inside a suggestion post. | Replaces all existing tags with `Accept`, closes and locks the post, and renames it to `[ACCEPTED] <old name>`. |
-| `.accepted` | Run directly inside a suggestion post. | Alias for `.accept`. |
-| `.maybe` | Run directly inside a managed post. | Applies the configured tag, locks the post, and adds the corresponding status prefix. |
-| `.ytd <YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Available to all members. Omit quality to inspect formats first. | Downloads media with yt-dlp and returns a temporary temp.sh link. |
-
-`.done`, `.in-progress`, `.exist`, `.reject`, `.tba`, and `.tbd` do not require a link. `.dupe` accepts either of the following forms:
-
-### YouTube downloader
-
-The prefix command `.ytd` and slash command `/ytd` accept YouTube and YouTube Music URLs. Supported types are `video`, `audio`, and `thumbnail`:
-
-```text
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:video
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:audio quality:251
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:thumbnail
-```
-
-For video or audio, omit `quality` first to receive an interactive quality selector. Choose a format from the dropdown, then press **Download**; the bot does not start downloading until you confirm. You may still provide a format ID or `quality:best` directly when using the command. By default, playlist and album URLs are rejected before yt-dlp inspection or download, including YouTube URLs with a `list` parameter and YouTube Music collection pages. This behavior is controlled by `ytd.block_playlist_album_download`, which defaults to `true`. Set it to `false` only when you intentionally want yt-dlp to handle collection URLs; the bot still expects exactly one output file. Before a single media download starts, the bot checks free space in the media work directory and refuses the job when the available space is below the estimated requirement plus a safety margin. Video downloads select the highest available video and audio combination by default; audio downloads preserve the best available source and embed metadata and thumbnail when supported. Thumbnail mode downloads the source thumbnail without media conversion. Files are named using the sanitized media title and type, such as `My_Song_audio.opus`, `My_Video_video.mp4`, or `My_Video_thumbnail.webp`. For YouTube Music audio, the filename uses the track metadata format `Song_Title - Artist.opus` without the `_audio` suffix. The original extension selected by yt-dlp is preserved. Files are uploaded to [temp.sh](https://temp.sh/), which currently states a 4GB maximum and three-day expiry; treat returned links as temporary. The bot retries transient network errors and HTTP 408, 425, 429, and 5xx responses up to three attempts with exponential backoff; permanent client errors are returned immediately.
-
-The Pterodactyl startup script automatically installs local yt-dlp and static ffmpeg under `.tools/media` when they are missing. Set `AUTO_INSTALL_MEDIA_TOOLS=0` to disable this behavior and provide `YTDLP_BIN` and `FFMPEG_BIN` yourself.
+The `post_link` value accepts a Discord post or message link:
 
 ```text
 https://discord.com/channels/<guild_id>/<post_id>
 https://discord.com/channels/<guild_id>/<post_id>/<message_id>
 ```
 
-The bot validates the guild ID and refuses to process a `.dupe` target that is not in the configured `suggestion` Forum Channel.
+### YouTube downloader
 
-### Prefix autocorrection
+The `/ytd` command accepts YouTube and YouTube Music URLs. Supported types are `video`, `audio`, and `thumbnail`:
 
-Set `prefix_autocorrect: true` to let the bot correct a close typo when there is exactly one unambiguous command within `prefix_max_distance`. For example, `.sloved` is not a registered alias, but it can be recognized as a typo for `.solved`. The bot reports the correction before applying the command. If multiple commands are equally close, it does nothing to avoid an unsafe guess.
+```text
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:video
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:audio quality:251
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:thumbnail
+```
+
+For video or audio, omit `quality` first to receive an interactive quality selector. Choose a format from the dropdown, then press **Download**; the bot does not start downloading until you confirm. You may still provide a format ID or `quality:best` directly when using the command. By default, playlist and album URLs are rejected before yt-dlp inspection or download, including YouTube URLs with a `list` parameter and YouTube Music collection pages. This behavior is controlled by `ytd.block_playlist_album_download`, which defaults to `true`. Set it to `false` only when you intentionally want yt-dlp to handle collection URLs; the bot still expects exactly one output file. Before a single media download starts, the bot checks free space in the media work directory and refuses the job when the available space is below the estimated requirement plus a safety margin. Video downloads select the highest available video and audio combination by default; audio downloads preserve the best available source and embed metadata and thumbnail when supported. Thumbnail mode downloads the source thumbnail without media conversion. Files are named using the sanitized media title and type, such as `My_Song_audio.opus`, `My_Video_video.mp4`, or `My_Video_thumbnail.webp`. For YouTube Music audio, the filename uses the track metadata format `Song_Title - Artist.opus` without the `_audio` suffix. The original extension selected by yt-dlp is preserved. Files are uploaded to [temp.sh](https://temp.sh/), which currently states a 4GB maximum and three-day expiry; treat returned links as temporary. The bot retries transient network errors and HTTP 408, 425, 429, and 5xx responses up to three attempts with exponential backoff; permanent client errors are returned immediately.
+
+The Pterodactyl startup script automatically installs local yt-dlp and static ffmpeg under `.tools/media` when they are missing. Set `AUTO_INSTALL_MEDIA_TOOLS=0` to disable this behavior and provide `YTDLP_BIN` and `FFMPEG_BIN` yourself.
 
 ## Configuration
 
@@ -116,8 +95,6 @@ bot_token: "replace-with-discord-bot-token"
 guild_id: "replace-with-server-id"
 moderator_role_ids: []
 replace_existing_tags: false
-prefix_autocorrect: true
-prefix_max_distance: 2
 ytd:
   block_playlist_album_download: true
 ```
@@ -151,7 +128,7 @@ The bot should be able to see both managed Forum Channels and should have at lea
 | Manage Threads | Rename, archive, unarchive, lock, unlock, and manage posts. |
 | Manage Channels | Update guidelines, available tags, and the `Require Tags when posting` flag. |
 
-Enable **Message Content Intent** under the Bot settings. Without it, slash commands continue to work, but prefix commands cannot read message content. The bot must also be invited with the `applications.commands` scope so guild slash commands can be registered.
+Do **not** enable **Message Content Intent**. Every command is a slash command or an interaction component, and the bot never reads message content. The bot must be invited with the `applications.commands` scope so guild slash commands can be registered.
 
 ## Run locally
 
@@ -227,7 +204,7 @@ The binary, Dockerfile, and systemd unit are portable across both options.
 
 ## Privacy
 
-The bot does not store message content, has no database, and does not use content for AI/ML training. See the [Privacy Policy](PRIVACY.md) for details.
+The bot does not read or store message content, has no database, does not request the Message Content Intent, and does not use content for AI/ML training. See the [Privacy Policy](PRIVACY.md) for details.
 
 ## Testing
 

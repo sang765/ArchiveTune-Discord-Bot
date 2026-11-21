@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/sang765/discord-forum-bot/internal/config"
 )
 
 type PrefixAction struct {
@@ -39,13 +38,20 @@ var prefixActions = map[string]PrefixAction{
 
 var statusPrefix = regexp.MustCompile(`^\[[^\]]+\]\s*`)
 
+// PrefixActionFor looks up a workflow action by its command name. It is shared by
+// the message parser and the slash-command handlers so both use the same tag and
+// title-prefix data.
+func PrefixActionFor(command string) (PrefixAction, bool) {
+	action, ok := prefixActions[strings.ToLower(strings.TrimSpace(command))]
+	return action, ok
+}
+
 func ParsePrefixCommand(content string) (PrefixAction, bool) {
 	fields := strings.Fields(strings.TrimSpace(content))
 	if len(fields) != 1 {
 		return PrefixAction{}, false
 	}
-	action, ok := prefixActions[strings.ToLower(fields[0])]
-	return action, ok
+	return PrefixActionFor(fields[0])
 }
 
 // GuessPrefixCommand returns a command only when there is one unambiguous close match.
@@ -110,26 +116,6 @@ func minInt(values ...int) int {
 		}
 	}
 	return minimum
-}
-
-func HasModeratorMessageAccess(message *discordgo.MessageCreate, cfg *config.Config) bool {
-	if message == nil || message.Member == nil {
-		return false
-	}
-	permissions := uint64(message.Member.Permissions)
-	if permissions&(discordgo.PermissionAdministrator|discordgo.PermissionManageThreads) != 0 {
-		return true
-	}
-	allowed := make(map[string]struct{}, len(cfg.ModeratorRoleIDs))
-	for _, roleID := range cfg.ModeratorRoleIDs {
-		allowed[roleID] = struct{}{}
-	}
-	for _, roleID := range message.Member.Roles {
-		if _, ok := allowed[roleID]; ok {
-			return true
-		}
-	}
-	return false
 }
 
 func (m *Manager) ApplyPrefixAction(threadID string, action PrefixAction) (*discordgo.Channel, error) {

@@ -16,7 +16,7 @@ import (
 	"github.com/sang765/discord-forum-bot/internal/media"
 )
 
-var commands = []*discordgo.ApplicationCommand{
+var commands = append([]*discordgo.ApplicationCommand{
 	{
 		Name:        "help",
 		Description: "Show all bot commands",
@@ -86,7 +86,7 @@ var commands = []*discordgo.ApplicationCommand{
 		Name:        "close",
 		Description: "Close and delete your suggestion post (OP only)",
 	},
-}
+}, statusSlashCommands()...)
 
 func main() {
 	configPath := os.Getenv("CONFIG_FILE")
@@ -113,7 +113,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("create Discord session: %v", err)
 	}
-	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMessageReactions | discordgo.IntentMessageContent
+	// No Message Content Intent: every command is an app (slash) command or an
+	// interaction component, so the bot never needs to read message bodies.
+	// GuildMessages is still needed for the MessageDelete cleanup handler.
+	session.Identify.Intents = discordgo.IntentsGuilds | discordgo.IntentsGuildMessages | discordgo.IntentsGuildMessageReactions
 	manager := forumdiscord.NewManager(session, cfg)
 	mediaWorkDir := os.Getenv("MEDIA_WORK_DIR")
 	if mediaWorkDir == "" {
@@ -212,160 +215,6 @@ func main() {
 			log.Printf("deleted thread %s because author %s deleted main post", channel.ID, event.Message.Author.ID)
 		}
 	})
-	session.AddHandler(func(s *discordgo.Session, message *discordgo.MessageCreate) {
-		logMessageEvent(message)
-		if message == nil || message.Author == nil || message.Author.Bot || message.GuildID != cfg.GuildID {
-			return
-		}
-		if strings.EqualFold(strings.TrimSpace(message.Content), ".help") {
-			if _, err := s.ChannelMessageSendEmbed(message.ChannelID, forumdiscord.HelpEmbed()); err != nil {
-				log.Println("send prefix help embed:", err)
-			}
-			return
-		}
-		if strings.EqualFold(strings.TrimSpace(message.Content), ".close") {
-			handleClosePrefixCommand(s, message, cfg)
-			return
-		}
-		if request, matched, valid, parseErr := media.ParseYTDCommandWithCollectionPolicy(message.Content, cfg.YTD.BlockPlaylistAlbumDownloadEnabled()); matched {
-			if !valid {
-				sendInfoMessage(s, message.ChannelID, "Usage", parseErr.Error())
-				return
-			}
-			go handleYTDRequest(s, message.ChannelID, message.Author.ID, request, ytdDownloader, ytdSelections)
-			return
-		}
-		prefixCandidate := strings.HasPrefix(strings.TrimSpace(message.Content), ".")
-		if reason, matched, valid := forumdiscord.ParseRejectCommand(message.Content); matched {
-			if !valid {
-				sendInfoMessage(s, message.ChannelID, "Usage", "`.reject <reason>` — the reason is required and must be at most 1,000 characters.")
-				return
-			}
-			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-				sendErrorMessage(s, message.ChannelID, "Permission denied", "You need `Manage Threads`, `Administrator`, or a configured moderator role to use `.reject`.")
-				return
-			}
-			statusAction := forumdiscord.SuggestionStatusAction{Command: ".reject", TagName: "Reject", TitlePrefix: "[REJECTED]"}
-			authorMention, authorErr := manager.ThreadAuthorMention(message.ChannelID)
-			if authorErr != nil {
-				log.Printf("get author for %s: %v", message.ChannelID, authorErr)
-			}
-			updated, err := manager.ApplySuggestionStatusAction(message.ChannelID, statusAction)
-			if err != nil {
-				sendErrorMessage(s, message.ChannelID, "Command failed", "Could not process `.reject`: "+err.Error())
-				return
-			}
-			messageText := fmt.Sprintf("The post was tagged `Reject`, closed and locked, and renamed to **%s**. Reason: %s", updated.Name, reason)
-			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, statusAction.Command, updated.Name, messageText, reason, nil)
-			return
-		}
-
-		if statusAction, link, matched, valid := forumdiscord.ParseSuggestionStatusCommand(message.Content); matched {
-			if !valid {
-				if statusAction.Command == ".dupe" {
-					sendInfoMessage(s, message.ChannelID, "Usage", "`.dupe <Discord post link or message link>`")
-				} else {
-					sendInfoMessage(s, message.ChannelID, "Usage", fmt.Sprintf("`%s` — send this command directly in the post you want to process.", statusAction.Command))
-				}
-				return
-			}
-			if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-				sendErrorMessage(s, message.ChannelID, "Permission denied", "You need `Manage Threads`, `Administrator`, or a configured moderator role to use suggestion status commands.")
-				return
-			}
-			targetID := message.ChannelID
-			var duplicateReference *duplicateReferenceData
-			if link != "" {
-				referencedID, err := forumdiscord.ParseDiscordPostLink(link, cfg.GuildID)
-				if err != nil {
-					sendErrorMessage(s, message.ChannelID, "Invalid post link", "Could not parse post link: "+err.Error())
-					return
-				}
-				referencedPost, referencedCfg, err := manager.ManagedThread(referencedID)
-				if err != nil {
-					sendErrorMessage(s, message.ChannelID, "Invalid duplicate post", "Could not load the referenced suggestion post: "+err.Error())
-					return
-				}
-				if !strings.EqualFold(strings.TrimSpace(referencedCfg.Name), "suggestion") {
-					sendErrorMessage(s, message.ChannelID, "Invalid duplicate post", "The referenced post is not in the managed suggestion Forum Channel.")
-					return
-				}
-				referencedAuthor, authorErr := manager.ThreadAuthorMention(referencedID)
-				if authorErr != nil {
-					log.Printf("get author for referenced post %s: %v", referencedID, authorErr)
-				}
-				duplicateReference = &duplicateReferenceData{
-					name:          referencedPost.Name,
-					link:          fmt.Sprintf("https://discord.com/channels/%s/%s", cfg.GuildID, referencedID),
-					authorMention: referencedAuthor,
-				}
-			}
-			authorMention, authorErr := manager.ThreadAuthorMention(targetID)
-			if authorErr != nil {
-				log.Printf("get author for %s: %v", targetID, authorErr)
-			}
-			updated, err := manager.ApplySuggestionStatusAction(targetID, statusAction)
-			if err != nil {
-				sendErrorMessage(s, message.ChannelID, "Command failed", "Could not process "+statusAction.Command+": "+err.Error())
-				return
-			}
-			messageText := fmt.Sprintf("The post was tagged `%s`, closed and locked, and renamed to **%s**.", statusAction.TagName, updated.Name)
-			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, statusAction.Command, updated.Name, messageText, "", duplicateReference)
-			return
-		}
-
-		action, ok := forumdiscord.ParsePrefixCommand(message.Content)
-		originalCommand := ""
-		if !ok && cfg.PrefixAutocorrect && prefixCandidate {
-			var correctedCommand string
-			action, correctedCommand, ok = forumdiscord.GuessPrefixCommand(message.Content, cfg.PrefixMaxDistance)
-			if ok {
-				originalCommand = strings.TrimSpace(message.Content)
-				log.Printf("autocorrected prefix %q to %q", originalCommand, correctedCommand)
-			}
-		}
-		if !ok {
-			if prefixCandidate {
-				log.Printf("prefix command not recognized: guild_id=%s channel_id=%s content=%q", message.GuildID, message.ChannelID, strings.TrimSpace(message.Content))
-			}
-			return
-		}
-		log.Printf("prefix command recognized: guild_id=%s channel_id=%s command=%s", message.GuildID, message.ChannelID, action.Command)
-		if !forumdiscord.HasModeratorMessageAccess(message, cfg) {
-			log.Printf("prefix command denied: channel_id=%s command=%s member_permissions=%d roles=%v", message.ChannelID, action.Command, memberPermissions(message), memberRoleIDs(message))
-			sendErrorMessage(s, message.ChannelID, "Permission denied", "You need `Manage Threads`, `Administrator`, or a configured moderator role to use prefix commands.")
-			return
-		}
-		authorMention := ""
-		if action.Command == ".solved" || action.Command == ".false" || action.Command == ".false-report" {
-			var authorErr error
-			authorMention, authorErr = manager.ThreadAuthorMention(message.ChannelID)
-			if authorErr != nil {
-				log.Printf("get author for %s: %v", message.ChannelID, authorErr)
-			}
-		}
-		log.Printf("prefix command applying: channel_id=%s command=%s", message.ChannelID, action.Command)
-		updated, err := manager.ApplyPrefixAction(message.ChannelID, action)
-		if err != nil {
-			log.Printf("prefix command failed: channel_id=%s command=%s error=%v", message.ChannelID, action.Command, err)
-			sendErrorMessage(s, message.ChannelID, "Command failed", "Could not process "+action.Command+": "+err.Error())
-			return
-		}
-		messageText := fmt.Sprintf("Applied `%s`: set tag `%s`, locked the post, and renamed it to **%s**.", action.Command, action.TagName, updated.Name)
-		if action.Command == ".tba" || action.Command == ".tbd" {
-			messageText = fmt.Sprintf("Applied `%s`: removed all previous tags and kept only `%s`; the post was not locked, closed, or renamed.", action.Command, action.TagName)
-		}
-		if originalCommand != "" {
-			messageText = fmt.Sprintf("I corrected `%s` to `%s`. %s", originalCommand, action.Command, messageText)
-		}
-		if action.Command == ".solved" || action.Command == ".false" || action.Command == ".false-report" {
-			sendWorkflowMessage(s, message.ChannelID, message.GuildID, authorMention, action.Command, updated.Name, messageText, "", nil)
-		} else {
-			sendSuccessMessage(s, message.ChannelID, "Command completed", messageText)
-		}
-		log.Printf("prefix command completed: channel_id=%s command=%s post_name=%q", message.ChannelID, action.Command, updated.Name)
-	})
-
 	if err := session.Open(); err != nil {
 		log.Fatalf("open Discord gateway: %v", err)
 	}
@@ -378,48 +227,16 @@ func main() {
 	log.Println("ArchiveTune Bot shutting down")
 }
 
-func logMessageEvent(message *discordgo.MessageCreate) {
-	if message == nil {
-		log.Printf("message event received: message=nil")
-		return
-	}
-	authorID := ""
-	authorBot := false
-	if message.Author != nil {
-		authorID = message.Author.ID
-		authorBot = message.Author.Bot
-	}
-	content := strings.TrimSpace(message.Content)
-	prefixCandidate := strings.HasPrefix(content, ".")
-	if !prefixCandidate && os.Getenv("DEBUG_MESSAGE_EVENTS") != "1" {
-		return
-	}
-	log.Printf("message event received: message_id=%s guild_id=%s channel_id=%s author_id=%s author_bot=%t content_len=%d starts_with_dot=%t", message.ID, message.GuildID, message.ChannelID, authorID, authorBot, len([]rune(content)), prefixCandidate)
-	if prefixCandidate {
-		log.Printf("message content for prefix candidate: %q", content)
-	}
-}
-
-func memberPermissions(message *discordgo.MessageCreate) uint64 {
-	if message == nil || message.Member == nil {
-		return 0
-	}
-	return uint64(message.Member.Permissions)
-}
-
-func memberRoleIDs(message *discordgo.MessageCreate) []string {
-	if message == nil || message.Member == nil {
-		return nil
-	}
-	return message.Member.Roles
-}
-
 func handleCommand(s *discordgo.Session, i *discordgo.InteractionCreate, manager *forumdiscord.Manager, cfg *config.Config, ytdDownloader *media.Downloader, ytdSelections *media.SelectionStore) {
 	if err := deferInteraction(s, i); err != nil {
 		log.Printf("defer slash command interaction: %v", err)
 		return
 	}
 	data := i.ApplicationCommandData()
+	if spec, ok := statusActionByName(data.Name); ok {
+		handleStatusCommand(s, i, manager, cfg, spec)
+		return
+	}
 	switch data.Name {
 	case "ytd":
 		request := media.Request{URL: optionString(data.Options, "url"), Type: media.MediaType(optionString(data.Options, "type")), Quality: optionString(data.Options, "quality")}
@@ -569,12 +386,6 @@ func sendInfoMessage(s *discordgo.Session, channelID, title, description string)
 	}
 }
 
-func sendSuccessMessage(s *discordgo.Session, channelID, title, description string) {
-	if _, err := s.ChannelMessageSendEmbed(channelID, forumdiscord.SuccessEmbed(title, description)); err != nil {
-		log.Printf("send success embed: %v", err)
-	}
-}
-
 func sendErrorMessage(s *discordgo.Session, channelID, title, description string) {
 	if _, err := s.ChannelMessageSendEmbed(channelID, forumdiscord.ErrorEmbed(title, description)); err != nil {
 		log.Printf("send error embed: %v", err)
@@ -672,31 +483,6 @@ func sendWorkflowMessage(s *discordgo.Session, channelID, guildID, content, comm
 	}
 }
 
-func handleClosePrefixCommand(s *discordgo.Session, message *discordgo.MessageCreate, cfg *config.Config) {
-	channel, err := s.Channel(message.ChannelID)
-	if err != nil {
-		sendErrorMessage(s, message.ChannelID, "Command failed", "Could not fetch post info: "+err.Error())
-		return
-	}
-	if channel.Type != discordgo.ChannelTypeGuildPublicThread && channel.Type != discordgo.ChannelTypeGuildPrivateThread {
-		sendErrorMessage(s, message.ChannelID, "Command failed", "This command can only be used inside a suggestion post.")
-		return
-	}
-	if channel.ParentID != forumdiscord.SuggestionChannelID {
-		sendErrorMessage(s, message.ChannelID, "Command failed", "This command can only be used in the suggestion channel.")
-		return
-	}
-	if channel.OwnerID != message.Author.ID {
-		sendErrorMessage(s, message.ChannelID, "Command failed", "Only the post creator can use this command.")
-		return
-	}
-	if _, err := s.ChannelDelete(message.ChannelID); err != nil {
-		sendErrorMessage(s, message.ChannelID, "Command failed", "Could not delete the post: "+err.Error())
-		return
-	}
-	log.Printf("user %s closed and deleted suggestion post %s via prefix command", message.Author.ID, message.ChannelID)
-}
-
 func handleCloseSuggestionButton(s *discordgo.Session, interaction *discordgo.InteractionCreate, cfg *config.Config) {
 	channel, err := s.Channel(interaction.ChannelID)
 	if err != nil {
@@ -742,28 +528,6 @@ func workflowDescription(command, postName, details, reason string, duplicateRef
 	return details
 }
 
-func handleYTDRequest(s *discordgo.Session, channelID, requesterID string, request media.Request, downloader *media.Downloader, selections *media.SelectionStore) {
-	info, err := downloader.Inspect(context.Background(), request)
-	if err != nil {
-		sendErrorMessage(s, channelID, "Media inspection failed", err.Error())
-		return
-	}
-	if request.Quality == "" && request.Type != media.MediaThumbnail {
-		sendYTDSelectionMessage(s, channelID, requesterID, request, info, selections)
-		return
-	}
-
-	sendInfoMessage(s, channelID, "Preparing media", fmt.Sprintf("Preparing `%s` download for **%s**. Please wait...", request.Type, info.Title))
-	result, err := downloader.DownloadAndUpload(context.Background(), request, info)
-	if err != nil {
-		sendErrorMessage(s, channelID, "Media download failed", err.Error())
-		return
-	}
-	if _, err := s.ChannelMessageSendEmbed(channelID, mediaResultEmbed(result)); err != nil {
-		log.Printf("send media result embed: %v", err)
-	}
-}
-
 func handleYTDInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, request media.Request, downloader *media.Downloader, selections *media.SelectionStore) {
 	info, err := downloader.Inspect(context.Background(), request)
 	if err != nil {
@@ -782,12 +546,6 @@ func handleYTDInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, 
 	edited := mediaResultEmbed(result)
 	if _, err := s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{Embeds: &[]*discordgo.MessageEmbed{edited}}); err != nil {
 		log.Printf("edit /ytd interaction response: %v", err)
-	}
-}
-
-func sendMediaInfoMessage(s *discordgo.Session, channelID string, info media.Info, mediaType media.MediaType, summary string) {
-	if _, err := s.ChannelMessageSendEmbed(channelID, mediaInfoEmbed(info, summary, mediaType)); err != nil {
-		log.Printf("send media info embed: %v", err)
 	}
 }
 
@@ -864,30 +622,6 @@ func formatBytes(size int64) string {
 	return fmt.Sprintf("%.2f KB", float64(size)/unit)
 }
 
-func sendYTDSelectionMessage(s *discordgo.Session, channelID, requesterID string, request media.Request, info media.Info, selections *media.SelectionStore) {
-	selectionID, err := selections.Create(media.Selection{Request: request, Info: info, ChannelID: channelID, UserID: requesterID})
-	if err != nil {
-		sendErrorMessage(s, channelID, "Media selection failed", err.Error())
-		return
-	}
-	selection := media.Selection{Request: request, Info: info, ChannelID: channelID, UserID: requesterID}
-	selectionEmbed := mediaInfoEmbed(info, "Choose a quality from the menu below, then press **Download**. The download will not start until you confirm.", request.Type)
-	message, err := s.ChannelMessageSendComplex(channelID, &discordgo.MessageSend{
-		Embeds:     []*discordgo.MessageEmbed{selectionEmbed},
-		Components: ytdComponents(selectionID, selection),
-	})
-	if err != nil {
-		selections.Delete(selectionID, requesterID)
-		log.Printf("send ytd selection message: %v", err)
-		return
-	}
-	if message != nil {
-		selection.MessageID = message.ID
-		// Store the message ID for traceability; the selection ID remains in component custom IDs.
-		selections.SetMessageID(selectionID, requesterID, message.ID)
-	}
-}
-
 func sendYTDSelectionInteraction(s *discordgo.Session, i *discordgo.InteractionCreate, requesterID string, request media.Request, info media.Info, selections *media.SelectionStore) {
 	selectionID, err := selections.Create(media.Selection{Request: request, Info: info, ChannelID: i.ChannelID, UserID: requesterID})
 	if err != nil {
@@ -926,7 +660,7 @@ func handleYTDComponent(s *discordgo.Session, i *discordgo.InteractionCreate, se
 		}
 		selection, ok := selections.SetQuality(selectionID, userID, data.Values[0])
 		if !ok {
-			componentError(s, i, "This media selection expired or belongs to another user. Run `.ytd` again.")
+			componentError(s, i, "This media selection expired or belongs to another user. Run `/ytd` again.")
 			return
 		}
 		updated := mediaInfoEmbed(selection.Info, fmt.Sprintf("Selected quality: `%s`. Press **Download** to start, or **Cancel** to discard this request.", displayQuality(selection.Quality)), selection.Request.Type)
@@ -934,7 +668,7 @@ func handleYTDComponent(s *discordgo.Session, i *discordgo.InteractionCreate, se
 	case "download":
 		selection, ok := selections.Take(selectionID, userID)
 		if !ok {
-			componentError(s, i, "Choose a quality first, or run `.ytd` again because this selection expired.")
+			componentError(s, i, "Choose a quality first, or run `/ytd` again because this selection expired.")
 			return
 		}
 		if err := respondComponentDeferredUpdate(s, i); err != nil {

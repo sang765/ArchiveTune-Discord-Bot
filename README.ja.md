@@ -2,7 +2,7 @@
 
 [English](README.md) · [日本語](README.ja.md) · [Tiếng Việt](README.vi.md)
 
-**ArchiveTune Bot** は、Discord の Forum Channel におけるタグと投稿を管理するための **Go 製 Discord bot** です。bot はデータベースを使用せず、AI による本文処理も行いません。Discord を正規のデータソースとし、`config.yaml` に bot と channel の設定を保存します。
+**ArchiveTune Bot** は、Discord の Forum Channel におけるタグと投稿を管理するための **Go 製 Discord bot** です。bot はデータベースを使用せず、AI による本文処理も行わず、Message Content Intent も要求しません。Discord を正規のデータソースとし、`config.yaml` に bot と channel の設定を保存します。
 
 Discord では Forum の各投稿は thread として扱われます。利用可能な Forum タグは親 channel に保存され、個々の投稿に適用されたタグは thread に保存されます。[1] [2] そのため、この bot はリアルタイムイベントに Gateway を使用し、タグと投稿の決定的な操作に Discord REST API を使用します。
 
@@ -24,8 +24,8 @@ Discord では Forum の各投稿は thread として扱われます。利用可
 
 | Channel | ID | 特別な動作 |
 | --- | --- | --- |
-| `issues` | `1498327801923637439` | `.solved`、`.false`、`.false-report` はこの Forum Channel のみで利用できます。`.solved` または `.false` 成功時には投稿作成者を mention します。 |
-| `suggestion` | `1498328044635422790` | タグのない新規投稿には `Maybe` を自動適用します。`/fix-suggestion`、`.dupe`、`.done`、`.in-progress`、`.exist`、`.reject`、`.tba`、`.tbd` がこの channel で動作します。 |
+| `issues` | `1498327801923637439` | `/solved`、`/false`、`/false-report` はこの Forum Channel のみで利用できます。`/solved` または `/false` 成功時には投稿作成者を mention します。 |
+| `suggestion` | `1498328044635422790` | タグのない新規投稿には `Maybe` を自動適用します。`/fix-suggestion`、`/dupe`、`/done`、`/in-progress`、`/exist`、`/reject`、`/tba`、`/tbd` がこの channel で動作します。 |
 
 ## Slash command
 
@@ -40,48 +40,39 @@ Discord では Forum の各投稿は thread として扱われます。利用可
 | `/post-state state:<open\|close\|lock\|unlock>` | 投稿内で実行するか、`post_id` を指定します。 | 投稿の archive または lock 状態を変更します。 |
 | `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | すべての member が使用できます。quality を省略すると interactive selector を開きます。 | yt-dlp で media をダウンロードし、temp.sh の一時リンクを返します。 |
 
-## Prefix command
+## Status slash command
 
-Prefix command は通常の message として送信します。利用には **Message Content Intent** と moderator 権限が必要です。ただし `.help` と `.ytd` はすべての member が使用できます。成功、エラー、usage、権限通知を含むすべての command response は、ArchiveTune Bot ブランドの Embed で送信されます。
-
-| Command | 動作 |
-| --- | --- |
-| `.help` | すべての command を Embed で表示します。 |
-
-### issues command
+すべての workflow command は Discord app (slash) command です。そのため bot は **Message Content Intent** を必要としません。status command は moderator 権限が必要で、`/help` と `/ytd` はすべての member が使用できます。エラーや権限通知を含むすべての response は ArchiveTune Bot ブランドの Embed で送信されます。各 status command には任意の `post_id` があり、空にすると現在の投稿が対象になります。
 
 | Command | 動作 |
 | --- | --- |
-| `.solved` | `issues` 内で現在の workflow タグを `Solved` に置換し、投稿を lock して `[SOLVED] <旧タイトル>` に変更します。作成者を mention します。 |
-| `.false` | `issues` 内で現在の workflow タグを `False report` に置換し、投稿を lock して `[FALSE REPORT] <旧タイトル>` に変更します。作成者を mention します。 |
-| `.false-report` | `issues` における `False report` workflow の完全名 alias です。 |
+| `/solved` | `issues` 内で現在の workflow タグを `Solved` に置換し、投稿を lock して `[SOLVED] <旧タイトル>` に変更します。作成者を mention します。 |
+| `/false`, `/false-report` | `issues` 内で現在の workflow タグを `False report` に置換し、投稿を lock して `[FALSE REPORT] <旧タイトル>` に変更します。作成者を mention します。 |
+| `/dupe post_link:<link>` | 既存タグをすべて `Duplicate` に置換し、対象投稿を close / lock し、`[DUPLICATE] <旧タイトル>` に変更して対象作成者を mention します。リンクは設定済み `suggestion` Forum Channel 内の投稿である必要があります。 |
+| `/done` | 既存タグをすべて `Done` に置換し、投稿を close / lock して `[DONE] <旧タイトル>` に変更します。 |
+| `/in-progress` | 既存タグをすべて `In Progress...` に置換し、投稿を close / lock して `[IN PROGRESS] <旧タイトル>` に変更します。 |
+| `/exist` | 既存タグをすべて `Already exist` に置換し、投稿を close / lock して `[ALREADY EXIST] <旧タイトル>` に変更し、作成者を mention します。 |
+| `/reject reason:<理由>` | 既存タグをすべて `Reject` に置換し、投稿を close / lock して `[REJECTED] <旧タイトル>` に変更し、作成者を mention して理由を `text` code block で送信します。理由は必須で 1,000 文字以内です。 |
+| `/accept` | 既存タグをすべて `Accept` に置換し、投稿を close / lock して `[ACCEPTED] <旧タイトル>` に変更します。 |
+| `/accepted`, `/rejected` | 以前の command 名を使っていた moderator 向けに残した alias です。 |
+| `/tba`, `/tbd` | 既存タグを `TBA` または `TBD` のみに置換します。close、lock、タイトル変更は行いません。 |
+| `/maybe`, `/duplicate`, `/already-exist`, `/problem`, `/question`, `/stable`, `/nightly`, `/meta` | 設定済み tag を適用し、投稿を lock して対応する status prefix を追加します。 |
 
-### suggestion command
+`post_link` には Discord の投稿リンクまたはメッセージリンクを指定します。
 
-| Command | 使用方法 | 動作 |
-| --- | --- | --- |
-| `.dupe <post link または message link>` | Discord の投稿リンクまたはメッセージリンクが必要です。 | 既存タグをすべて `Duplicate` に置換し、対象 suggestion 投稿を close / lock し、`[DUPLICATE] <旧タイトル>` に変更して対象作成者を mention します。 |
-| `.done` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `Done` に置換し、投稿を close / lock して `[DONE] <旧タイトル>` に変更します。 |
-| `.in-progress` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `In Progress...` に置換し、投稿を close / lock して `[IN PROGRESS] <旧タイトル>` に変更します。 |
-| `.exist` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `Already exist` に置換し、投稿を close / lock して `[ALREADY EXIST] <旧タイトル>` に変更し、作成者を mention します。 |
-| `.reject <理由>` | 現在の suggestion 投稿内で直接実行します。 | 既存タグをすべて `Reject` に置換し、投稿を close / lock して `[REJECTED] <旧タイトル>` に変更し、作成者を mention して理由を `text` code block で送信します。理由は必須で 1,000 文字以内です。理由内の mention は無効化されます。 |
-| `.tba` | suggestion 投稿内で直接実行します。 | 既存タグをすべて削除し、`TBA` のみを残します。close、lock、タイトル変更は行いません。 |
-| `.tbd` | suggestion 投稿内で直接実行します。 | 既存タグをすべて削除し、`TBD` のみを残します。close、lock、タイトル変更は行いません。 |
-| `.accept` | suggestion 投稿内で直接実行します。 | 既存タグをすべて `Accept` に置換し、投稿を close / lock して `[ACCEPTED] <旧タイトル>` に変更します。 |
-| `.accepted` | suggestion 投稿内で直接実行します。 | `.accept` の alias です。 |
-| `.maybe` | 管理対象の投稿内で直接実行します。 | 設定済み tag を適用し、投稿を lock して対応する status prefix を追加します。 |
-| `.ytd <YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | すべての member が使用できます。quality を省略すると format を先に表示します。 | yt-dlp で media をダウンロードし、temp.sh の一時リンクを返します。 |
-
-`.done`、`.in-progress`、`.exist`、`.reject`、`.tba`、`.tbd` にリンクは必要ありません。`.dupe` は次の形式に対応します。
+```text
+https://discord.com/channels/<guild_id>/<post_id>
+https://discord.com/channels/<guild_id>/<post_id>/<message_id>
+```
 
 ### YouTube downloader
 
-Prefix command `.ytd` と slash command `/ytd` は YouTube と YouTube Music の URL に対応し、`video`、`audio`、`thumbnail` の三つの type を使用できます。
+`/ytd` は YouTube と YouTube Music の URL に対応し、`video`、`audio`、`thumbnail` の三つの type を使用できます。
 
 ```text
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:video
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:audio quality:251
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:thumbnail
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:video
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:audio quality:251
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:thumbnail
 ```
 
 video または audio では、最初に `quality` を省略して interactive quality selector を開きます。dropdown から format を選び、**Download** を押すとダウンロードが始まります。format ID または `quality:best` を直接指定することもできます。デフォルトでは、playlist と album の URL は yt-dlp の inspect または download の前に拒否されます。これには `list` parameter を含む YouTube URL と YouTube Music の collection page が含まれます。この動作は `ytd.block_playlist_album_download` で制御でき、デフォルトは `true` です。collection URL を yt-dlp に処理させる場合のみ `false` にしてください。bot は引き続き一つの output file のみを想定します。各 media download の前に、bot は media work directory の空き容量を確認し、推定必要容量と safety margin を下回る場合は処理を拒否します。ファイル名は sanitize 済みの title と type を使い、`My_Song_audio.opus`、`My_Video_video.mp4`、`My_Video_thumbnail.webp` のようになります。YouTube Music の audio は、artist metadata がある場合に `Song Title - Artist.opus` 形式となり、`_audio` suffix は付きません。yt-dlp が選択した元の extension は保持されます。ファイルは [temp.sh](https://temp.sh/) に upload され、リンクは一時的に約 3 日間有効です。一時的なネットワークエラーまたは HTTP 408、425、429、5xx が発生した場合、bot は指数バックオフで最大 3 回まで再試行します。恒久的な client error はすぐに返されます。Pterodactyl の startup script は、必要に応じて `.tools/media` に yt-dlp と ffmpeg を自動インストールします。無効にする場合は `AUTO_INSTALL_MEDIA_TOOLS=0` を設定してください。
@@ -90,12 +81,6 @@ video または audio では、最初に `quality` を省略して interactive q
 https://discord.com/channels/<guild_id>/<post_id>
 https://discord.com/channels/<guild_id>/<post_id>/<message_id>
 ```
-
-bot は guild ID を検証し、`.dupe` の対象が設定済みの `suggestion` Forum Channel に属していない場合は処理しません。
-
-### Prefix の typo 自動修正
-
-`prefix_autocorrect: true` にすると、`prefix_max_distance` の範囲内で、候補が一つだけの場合に近い typo を自動修正できます。例えば `.sloved` は登録済み alias ではありませんが、`.solved` の typo として認識できます。実行前に修正内容を message で通知します。同じ距離の候補が複数ある場合は、誤操作を避けるため何も実行しません。
 
 ## 設定
 
@@ -112,8 +97,6 @@ bot_token: "replace-with-discord-bot-token"
 guild_id: "replace-with-server-id"
 moderator_role_ids: []
 replace_existing_tags: false
-prefix_autocorrect: true
-prefix_max_distance: 2
 ytd:
   block_playlist_album_download: true
 ```
@@ -147,7 +130,7 @@ bot は管理対象の二つの Forum Channel を閲覧でき、少なくとも�
 | Manage Threads | 投稿の名前変更、archive、unarchive、lock、unlock、管理を行います。 |
 | Manage Channels | ガイドライン、available tags、`Require Tags when posting` を更新します。 |
 
-Bot settings で **Message Content Intent** を有効にしてください。無効の場合、slash command は動作しますが prefix command は message 内容を読み取れません。また、guild slash command を登録するために `applications.commands` scope で invite する必要があります。
+**Message Content Intent** は有効にしないでください。すべての command は slash command または interaction component であり、bot は message 本文を読み取りません。guild slash command を登録するために `applications.commands` scope で invite する必要があります。
 
 ## ローカルで実行
 
@@ -223,7 +206,7 @@ Binary、Dockerfile、systemd unit は両方の方法で portable に利用で�
 
 ## プライバシー
 
-Bot は message 内容を保存せず、database も持たず、AI/ML の学習にも内容を使用しません。詳細は [Privacy Policy](PRIVACY.md) を参照してください。
+Bot は message 本文を読み取らず保存もせず、database も持ちず、Message Content Intent も要求せず、AI/ML の学習にも内容を使用しません。詳細は [Privacy Policy](PRIVACY.md) を参照してください。
 
 ## テスト
 

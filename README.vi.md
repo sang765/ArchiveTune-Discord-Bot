@@ -2,7 +2,7 @@
 
 [English](README.md) · [日本語](README.ja.md) · [Tiếng Việt](README.vi.md)
 
-**ArchiveTune Bot** là Discord bot viết bằng **Go**, tập trung vào một nhiệm vụ: quản lý tag và post trong Discord Forum Channel. Bot không sử dụng database và không xử lý nội dung bằng AI. Discord là nguồn dữ liệu chính, còn `config.yaml` lưu cấu hình bot và channel.
+**ArchiveTune Bot** là Discord bot viết bằng **Go**, tập trung vào một nhiệm vụ: quản lý tag và post trong Discord Forum Channel. Bot không sử dụng database, không xử lý nội dung bằng AI và không yêu cầu Message Content Intent. Discord là nguồn dữ liệu chính, còn `config.yaml` lưu cấu hình bot và channel.
 
 Discord biểu diễn mỗi post trong Forum Channel như một thread. Tag khả dụng được lưu ở channel cha, còn tag áp dụng cho từng post được lưu trên thread.[1] [2] Vì vậy bot dùng Gateway cho event thời gian thực và Discord REST API cho các thao tác tag và post có quy tắc rõ ràng.
 
@@ -24,8 +24,8 @@ Bot cố ý không cung cấp AI moderation, quản lý reaction, lưu lịch s�
 
 | Channel | ID | Hành vi đặc biệt |
 | --- | --- | --- |
-| `issues` | `1498327801923637439` | `.solved`, `.false` và `.false-report` chỉ được dùng tại đây. Khi `.solved` hoặc `.false` thành công, bot mention tác giả post. |
-| `suggestion` | `1498328044635422790` | Post mới chưa có tag tự động nhận `Maybe`. `/fix-suggestion`, `.dupe`, `.done`, `.in-progress`, `.exist`, `.reject`, `.tba` và `.tbd` hoạt động tại đây. |
+| `issues` | `1498327801923637439` | `/solved`, `/false` và `/false-report` chỉ được dùng tại đây. Khi `/solved` hoặc `/false` thành công, bot mention tác giả post. |
+| `suggestion` | `1498328044635422790` | Post mới chưa có tag tự động nhận `Maybe`. `/fix-suggestion`, `/dupe`, `/done`, `/in-progress`, `/exist`, `/reject`, `/tba` và `/tbd` hoạt động tại đây. |
 
 ## Slash command
 
@@ -40,48 +40,39 @@ Bot cố ý không cung cấp AI moderation, quản lý reaction, lưu lịch s�
 | `/post-state state:<open\|close\|lock\|unlock>` | Chạy trong post hoặc truyền `post_id`. | Thay đổi trạng thái archive hoặc lock của post. |
 | `/ytd url:<YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Mọi thành viên đều dùng được. Bỏ quality để mở bộ chọn tương tác trước. | Tải media bằng yt-dlp và trả link tạm từ temp.sh. |
 
-## Prefix command
+## Status slash command
 
-Prefix command được gửi như message thông thường. Bot cần **Message Content Intent** và người dùng cần quyền moderator, ngoại trừ `.help` và `.ytd` có thể dùng bởi mọi thành viên. Tất cả phản hồi command, gồm thành công, lỗi, usage và thông báo quyền, đều được gửi dưới dạng Embed thương hiệu ArchiveTune Bot.
-
-| Command | Hành vi |
-| --- | --- |
-| `.help` | Hiển thị toàn bộ danh sách command trong Embed. |
-
-### Command cho issues
+Tất cả workflow command đều là Discord app (slash) command, nên bot không bao giờ cần **Message Content Intent**. Status command yêu cầu quyền moderator; `/help` và `/ytd` dùng được cho mọi thành viên. Mọi phản hồi, gồm lỗi và thông báo quyền, đều là Embed thương hiệu ArchiveTune Bot. Mỗi status command có thêm `post_id` tùy chọn; để trống để tác động vào post hiện tại.
 
 | Command | Hành vi |
 | --- | --- |
-| `.solved` | Trong `issues`, thay tag workflow hiện tại bằng `Solved`, lock post và đổi tên thành `[SOLVED] <tên cũ>`. Bot mention tác giả. |
-| `.false` | Trong `issues`, thay tag workflow hiện tại bằng `False report`, lock post và đổi tên thành `[FALSE REPORT] <tên cũ>`. Bot mention tác giả. |
-| `.false-report` | Alias đầy đủ của workflow `False report` trong `issues`. |
+| `/solved` | Trong `issues`, thay tag workflow hiện tại bằng `Solved`, lock post và đổi tên thành `[SOLVED] <tên cũ>`. mention tác giả. |
+| `/false`, `/false-report` | Trong `issues`, thay tag workflow hiện tại bằng `False report`, lock post và đổi tên thành `[FALSE REPORT] <tên cũ>`. mention tác giả. |
+| `/dupe post_link:<link>` | Thay toàn bộ tag bằng `Duplicate`, close và lock post đích, đổi tên thành `[DUPLICATE] <tên cũ>` và mention tác giả đích. Link phải trỏ tới post trong Forum Channel `suggestion` đã cấu hình. |
+| `/done` | Thay toàn bộ tag bằng `Done`, close và lock post, đổi tên thành `[DONE] <tên cũ>`. |
+| `/in-progress` | Thay toàn bộ tag bằng `In Progress...`, close và lock post, đổi tên thành `[IN PROGRESS] <tên cũ>`. |
+| `/exist` | Thay toàn bộ tag bằng `Already exist`, close và lock post, đổi tên thành `[ALREADY EXIST] <tên cũ>` và mention tác giả. |
+| `/reject reason:<lý do>` | Thay toàn bộ tag bằng `Reject`, close và lock post, đổi tên thành `[REJECTED] <tên cũ>`, mention tác giả và gửi lý do trong text code block. Lý do bắt buộc, tối đa 1.000 ký tự. |
+| `/accept` | Thay toàn bộ tag bằng `Accept`, close và lock post, đổi tên thành `[ACCEPTED] <tên cũ>`. |
+| `/accepted`, `/rejected` | Alias giữ lại cho moderator đã dùng tên command cũ. |
+| `/tba`, `/tbd` | Chỉ thay toàn bộ tag bằng `TBA` hoặc `TBD`; không close, lock hay đổi tên post. |
+| `/maybe`, `/duplicate`, `/already-exist`, `/problem`, `/question`, `/stable`, `/nightly`, `/meta` | Áp dụng tag đã cấu hình, lock post và thêm prefix trạng thái tương ứng. |
 
-### Command cho suggestion
+Giá trị `post_link` nhận Discord post link hoặc message link:
 
-| Command | Cách dùng | Hành vi |
-| --- | --- | --- |
-| `.dupe <post link hoặc message link>` | Bắt buộc có Discord post/message link. | Thay toàn bộ tag bằng `Duplicate`, close và lock suggestion post đích, đổi tên thành `[DUPLICATE] <tên cũ>` và mention tác giả đích. |
-| `.done` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `Done`, close và lock post, đổi tên thành `[DONE] <tên cũ>`. |
-| `.in-progress` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `In Progress...`, close và lock post, đổi tên thành `[IN PROGRESS] <tên cũ>`. |
-| `.exist` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `Already exist`, close và lock post, đổi tên thành `[ALREADY EXIST] <tên cũ>` và mention tác giả. |
-| `.reject <lý do>` | Gửi trực tiếp trong suggestion post hiện tại. | Thay toàn bộ tag bằng `Reject`, close và lock post, đổi tên thành `[REJECTED] <tên cũ>`, mention tác giả và gửi lý do trong text code block. Lý do bắt buộc, tối đa 1.000 ký tự; mọi mention bên trong lý do đều bị vô hiệu hóa. |
-| `.tba` | Gửi trực tiếp trong suggestion post. | Xóa toàn bộ tag cũ và chỉ giữ `TBA`. Không close, lock hoặc đổi tên post. |
-| `.tbd` | Gửi trực tiếp trong suggestion post. | Xóa toàn bộ tag cũ và chỉ giữ `TBD`. Không close, lock hoặc đổi tên post. |
-| `.accept` | Gửi trực tiếp trong suggestion post. | Thay toàn bộ tag bằng `Accept`, close và lock post, đổi tên thành `[ACCEPTED] <tên cũ>`. |
-| `.accepted` | Gửi trực tiếp trong suggestion post. | Alias của `.accept`. |
-| `.maybe` | Gửi trực tiếp trong post được quản lý. | Áp dụng tag đã cấu hình, lock post và thêm prefix trạng thái tương ứng. |
-| `.ytd <YouTube URL> type:<video\|audio\|thumbnail> [quality:<format id>]` | Mọi thành viên đều dùng được. Bỏ quality để xem format trước. | Tải media bằng yt-dlp và trả link tạm từ temp.sh. |
-
-`.done`, `.in-progress`, `.exist`, `.reject`, `.tba` và `.tbd` không cần link. Riêng `.dupe` hỗ trợ hai dạng link:
+```text
+https://discord.com/channels/<guild_id>/<post_id>
+https://discord.com/channels/<guild_id>/<post_id>/<message_id>
+```
 
 ### YouTube downloader
 
-Prefix command `.ytd` và slash command `/ytd` hỗ trợ URL YouTube và YouTube Music với ba loại `video`, `audio` và `thumbnail`:
+Lệnh `/ytd` hỗ trợ URL YouTube và YouTube Music với ba loại `video`, `audio` và `thumbnail`:
 
 ```text
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:video
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:audio quality:251
-.ytd https://youtu.be/dQw4w9WgXcQ?si=example type:thumbnail
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:video
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:audio quality:251
+/ytd url:https://youtu.be/dQw4w9WgXcQ type:thumbnail
 ```
 
 Với video hoặc audio, hãy bỏ `quality` ở lần đầu để mở menu chọn quality. Chọn format trong dropdown rồi bấm **Download**; bot chưa tải cho đến khi bạn xác nhận. Bạn vẫn có thể truyền trực tiếp format ID hoặc `quality:best` nếu muốn. Mặc định, bot tự động từ chối URL playlist và album trước khi gọi yt-dlp, gồm URL YouTube có tham số `list` và các trang collection của YouTube Music. Có thể điều khiển bằng `ytd.block_playlist_album_download`, mặc định là `true`. Chỉ đặt `false` khi bạn chủ động muốn yt-dlp xử lý URL collection; bot vẫn yêu cầu đúng một output file. Trước mỗi lần tải media đơn, bot kiểm tra dung lượng trống trong thư mục media work và từ chối nếu dung lượng khả dụng thấp hơn mức ước tính cộng safety margin. File được đặt tên theo title đã sanitize và type, ví dụ `My_Song_audio.opus`, `My_Video_video.mp4` hoặc `My_Video_thumbnail.webp`; riêng audio từ YouTube Music dùng metadata theo dạng `Tên Bài Hát - Tên Ca Sĩ.opus` và không thêm hậu tố `_audio`. Extension gốc do yt-dlp chọn vẫn được giữ nguyên. File được upload lên [temp.sh](https://temp.sh/) và link có thời hạn tạm thời khoảng ba ngày. Khi gặp lỗi mạng tạm thời hoặc HTTP 408, 425, 429 và 5xx, bot tự thử upload tối đa ba lần với thời gian chờ tăng dần; các lỗi 4xx cố định sẽ trả về ngay. Startup script của Pterodactyl tự cài yt-dlp và ffmpeg vào `.tools/media` nếu chưa có; đặt `AUTO_INSTALL_MEDIA_TOOLS=0` nếu muốn tắt cơ chế này.
@@ -90,12 +81,6 @@ Với video hoặc audio, hãy bỏ `quality` ở lần đầu để mở menu c
 https://discord.com/channels/<guild_id>/<post_id>
 https://discord.com/channels/<guild_id>/<post_id>/<message_id>
 ```
-
-Bot kiểm tra guild ID và từ chối xử lý nếu target của `.dupe` không nằm trong Forum Channel `suggestion` đã cấu hình.
-
-### Tự sửa lỗi chính tả prefix
-
-Đặt `prefix_autocorrect: true` để bot tự sửa typo gần đúng khi chỉ có một command duy nhất nằm trong khoảng `prefix_max_distance`. Ví dụ `.sloved` không phải alias đã đăng ký, nhưng có thể được nhận diện là typo của `.solved`. Bot sẽ báo command đã được sửa trước khi thực thi. Nếu có nhiều command có độ gần bằng nhau, bot không tự đoán để tránh thao tác nhầm.
 
 ## Cấu hình
 
@@ -112,8 +97,6 @@ bot_token: "replace-with-discord-bot-token"
 guild_id: "replace-with-server-id"
 moderator_role_ids: []
 replace_existing_tags: false
-prefix_autocorrect: true
-prefix_max_distance: 2
 ytd:
   block_playlist_album_download: true
 ```
@@ -147,7 +130,7 @@ Bot cần nhìn thấy hai Forum Channel và tối thiểu có các quyền sau:
 | Manage Threads | Đổi tên, archive, unarchive, lock, unlock và quản lý post. |
 | Manage Channels | Cập nhật guideline, available tags và cờ `Require Tags when posting`. |
 
-Bật **Message Content Intent** trong phần Bot settings. Nếu không bật, slash command vẫn hoạt động nhưng prefix command không đọc được nội dung message. Bot cũng phải được invite với scope `applications.commands` để đăng ký slash command theo guild.
+Không bật **Message Content Intent**. Mọi command đều là slash command hoặc interaction component, bot không bao giờ đọc nội dung tin nhắn. Bot phải được invite với scope `applications.commands` để đăng ký slash command theo guild.
 
 ## Chạy local
 
@@ -223,7 +206,7 @@ Binary, Dockerfile và systemd unit đều portable giữa hai phương án.
 
 ## Quyền riêng tư
 
-Bot không lưu nội dung tin nhắn, không có database và không dùng nội dung để huấn luyện AI/ML. Xem [Chính sách quyền riêng tư](PRIVACY.md) để biết chi tiết.
+Bot không đọc hay lưu nội dung tin nhắn, không có database, không yêu cầu Message Content Intent và không dùng nội dung để huấn luyện AI/ML. Xem [Chính sách quyền riêng tư](PRIVACY.md) để biết chi tiết.
 
 ## Kiểm thử
 

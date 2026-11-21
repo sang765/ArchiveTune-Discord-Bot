@@ -22,12 +22,19 @@ var suggestionStatusActions = map[string]SuggestionStatusAction{
 	".exist":       {Command: ".exist", TagName: "Already exist", TitlePrefix: "[ALREADY EXIST]"},
 }
 
+// SuggestionStatusActionFor looks up a suggestion workflow action by its command
+// name. It is shared by the message parser and the slash-command handlers.
+func SuggestionStatusActionFor(command string) (SuggestionStatusAction, bool) {
+	action, ok := suggestionStatusActions[strings.ToLower(strings.TrimSpace(command))]
+	return action, ok
+}
+
 func ParseSuggestionStatusCommand(content string) (action SuggestionStatusAction, link string, matched, valid bool) {
 	fields := strings.Fields(strings.TrimSpace(content))
 	if len(fields) == 0 {
 		return SuggestionStatusAction{}, "", false, false
 	}
-	action, matched = suggestionStatusActions[strings.ToLower(fields[0])]
+	action, matched = SuggestionStatusActionFor(fields[0])
 	if !matched {
 		return SuggestionStatusAction{}, "", false, false
 	}
